@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مطابقة الحسابات البنكية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#16202a;
+    --paper:#eef1f5;
+    --panel:#ffffff;
+    --line:#ccd3db;
+    --navy:#14304d;
+    --navy-deep:#0d2036;
+    --gold:#a67c27;
+    --gold-deep:#7c5c1c;
+    --danger:#a13a2d;
+    --danger-deep:#7c2c22;
+    --ok:#2f6b4f;
+    --muted:#5c6b78;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Tajawal',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:20px 28px;
+    border-bottom:4px solid var(--gold);
+  }
+  header h1{
+    font-size:21px;
+    font-weight:900;
+    margin:0 0 4px;
+  }
+  header .sub{
+    font-size:13px;
+    color:#c9d6e2;
+  }
+  nav.tabs{
+    display:flex;
+    gap:4px;
+    background:var(--navy-deep);
+    padding:0 20px;
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    background:transparent;
+    border:none;
+    color:#b9c8d6;
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:13.5px;
+    padding:13px 16px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    white-space:nowrap;
+  }
+  nav.tabs button.active{
+    color:#fff;
+    border-bottom-color:var(--gold);
+  }
+  nav.tabs button:disabled{
+    color:#5c6b78;
+    cursor:not-allowed;
+  }
+  main{
+    max-width:1200px;
+    margin:0 auto;
+    padding:24px 20px 60px;
+  }
+  .view{display:none;}
+  .view.active{display:block;}
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:20px;
+  }
+  .panel-head{
+    padding:13px 18px;
+    border-bottom:1px solid var(--line);
+    font-weight:700;
+    font-size:14.5px;
+    color:var(--navy);
+  }
+  .panel-body{padding:18px;}
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:720px){.grid2{grid-template-columns:1fr;}}
+  .field label{
+    display:block;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .field input[type=number], .field input[type=text]{
+    width:100%;
+    padding:9px 10px;
+    font-family:'Tajawal',sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:#fbfbfa;
+  }
+  .upload-box{
+    border:2px dashed var(--line);
+    border-radius:var(--radius);
+    padding:22px;
+    text-align:center;
+    background:#fbfcfd;
+  }
+  .upload-box h4{margin:0 0 6px;font-size:14px;color:var(--navy);}
+  .upload-box input[type=file]{display:none;}
+  .upload-btn{
+    display:inline-block;
+    margin-top:8px;
+    background:var(--navy);
+    color:#fff;
+    font-weight:700;
+    font-size:13px;
+    padding:8px 16px;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .upload-btn:hover{background:var(--navy-deep);}
+  .upload-status{
+    margin-top:10px;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  .upload-status.done{color:var(--ok);font-weight:700;}
+  button.action{
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:13.5px;
+    padding:9px 16px;
+    border-radius:var(--radius);
+    border:1px solid transparent;
+    cursor:pointer;
+    background:var(--navy);
+    color:#fff;
+  }
+  button.action:hover{background:var(--navy-deep);}
+  button.action.gold{background:var(--gold);}
+  button.action.gold:hover{background:var(--gold-deep);}
+  .summary-cards{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:16px;
+  }
+  @media (max-width:720px){.summary-cards{grid-template-columns:1fr;}}
+  .card{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+    background:#fbfcfd;
+  }
+  .card .label{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .card .value{font-size:19px;font-weight:900;color:var(--navy);}
+  .card.match .value{color:var(--ok);}
+  .card.mismatch .value{color:var(--danger);}
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  thead th{
+    text-align:right;
+    padding:9px 10px;
+    background:#f5f6f8;
+    color:var(--muted);
+    font-weight:700;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+    position:sticky;
+    top:0;
+    z-index:2;
+  }
+  tr.filter-row th{
+    top:37px;
+  }
+  tbody td{
+    padding:8px 10px;
+    border-bottom:1px solid #e7e9ee;
+    white-space:nowrap;
+  }
+  tbody tr:hover{background:#f8f9fb;}
+  select.recon-select{
+    font-family:'Tajawal',sans-serif;
+    font-size:12.5px;
+    padding:5px 8px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:#fff;
+    min-width:170px;
+  }
+  select.recon-select.adjusted{
+    border-color:var(--gold);
+    background:#fbf3e3;
+  }
+  .table-title{
+    font-weight:700;
+    font-size:14px;
+    color:var(--navy);
+    margin-bottom:4px;
+  }
+  .table-desc{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .empty-state{
+    padding:26px 16px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13.5px;
+  }
+  .table-scroll{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);}
+  tr.filter-row th{
+    padding:5px 8px;
+    background:#fbfcfd;
+  }
+  .col-filter{
+    width:100%;
+    font-family:'Tajawal',sans-serif;
+    font-size:12px;
+    padding:5px 7px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:#fff;
+  }
+  .search-row{display:flex;gap:10px;margin-bottom:16px;}
+  .search-row input{
+    flex:1;
+    padding:9px 10px;
+    font-family:'Tajawal',sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+  }
+  .badge{
+    display:inline-block;
+    font-size:11.5px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:12px;
+  }
+  .badge.books{background:#e3ecf5;color:var(--navy);}
+  .badge.bank{background:#f6ebd9;color:var(--gold-deep);}
+  .memo-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee;font-size:14px;}
+  .memo-row .lbl{color:var(--muted);}
+  .memo-row .amt{font-weight:700;}
+  .memo-row.total{border-top:2px solid var(--navy);border-bottom:none;padding-top:12px;margin-top:6px;}
+  .memo-row.total .amt{font-size:16px;color:var(--navy);}
+  .quad-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:900px){.quad-grid{grid-template-columns:1fr;}}
+  .quad{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .quad-head{
+    padding:10px 14px;
+    font-weight:700;
+    font-size:13.5px;
+    color:#fff;
+  }
+  .quad-head.del{background:var(--danger);}
+  .quad-head.add{background:var(--ok);}
+  .quad-sub{
+    padding:8px 14px;
+    font-size:12px;
+    color:var(--muted);
+    background:#fafbfc;
+    border-bottom:1px solid var(--line);
+  }
+  .note{
+    font-size:12.5px;
+    color:var(--muted);
+    background:#f5f6f8;
+    border-radius:var(--radius);
+    padding:10px 14px;
+    margin-top:10px;
+  }
+  .warn-banner{
+    background:#fdecea;
+    border:1px solid #f3b9b0;
+    color:var(--danger-deep);
+    padding:10px 14px;
+    border-radius:var(--radius);
+    font-size:13px;
+    margin-bottom:14px;
+  }
+  .subtab-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .subtab-btn{
+    background:#eef1f5;
+    border:1px solid var(--line);
+    color:var(--navy);
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    padding:8px 14px;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .subtab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .search-page{display:none;}
+  .search-page.active{display:block;}
+  .split2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-top:16px;
+  }
+  @media (max-width:820px){.split2{grid-template-columns:1fr;}}
+  .split-half{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .split-half-head{
+    background:var(--navy);
+    color:#fff;
+    padding:10px 14px;
+    font-weight:700;
+    font-size:13.5px;
+  }
+  .split-half-body{padding:12px;}
+  .split-half input{
+    width:100%;
+    padding:8px 10px;
+    font-family:'Tajawal',sans-serif;
+    font-size:13.5px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>مطابقة الحسابات البنكية</h1>
+  <div class="sub">رفع كشف الحساب الدفترى والبنكى — استخراج الاختلافات — بناء مذكرة التسوية</div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="data">1. البيانات</button>
+  <button class="tab-btn" data-tab="diff" disabled>2. بيان الاختلافات</button>
+  <button class="tab-btn" data-tab="review" disabled>مراجعة</button>
+  <button class="tab-btn" data-tab="search" disabled>3. البحث</button>
+  <button class="tab-btn" data-tab="memo" disabled>4. مذكرة التسوية</button>
+  <button class="tab-btn" data-tab="apply" disabled>5. تطبيق التسوية</button>
+</nav>
+
+<main>
+
+  <!-- ============ TAB 1: DATA ENTRY ============ -->
+  <div class="view active" id="view-data">
+
+    <div class="panel">
+      <div class="panel-head">الأرصدة الافتتاحية</div>
+      <div class="panel-body">
+        <div class="grid2">
+          <div>
+            <label style="display:block;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:8px;">دفاتر الشركة</label>
+            <div class="grid2">
+              <div class="field">
+                <label>مدين</label>
+                <input type="number" id="openingBooksDebit" value="0" step="any">
+              </div>
+              <div class="field">
+                <label>دائن</label>
+                <input type="number" id="openingBooksCredit" value="0" step="any">
+              </div>
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:8px;">كشف البنك أو الحساب المقابل</label>
+            <div class="grid2">
+              <div class="field">
+                <label>مدين</label>
+                <input type="number" id="openingBankDebit" value="0" step="any">
+              </div>
+              <div class="field">
+                <label>دائن</label>
+                <input type="number" id="openingBankCredit" value="0" step="any">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="openingWarn" class="warn-banner" style="display:none;margin-top:14px;">
+          الرصيدان الافتتاحيان غير متطابقين (مدين الدفاتر يقابله دائن البنك والعكس) — تأكد إن مجموع الرصيدين يساوي صفر قبل المتابعة.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">رفع كشوف الحساب</div>
+      <div class="panel-body">
+        <div class="grid2">
+          <div class="upload-box" id="boxBooks">
+            <h4>دفاتر الشركة</h4>
+            <div style="font-size:12px;color:var(--muted);">ملف إكسيل يحتوي: التاريخ / رقم المرجع / بيان / مدين / دائن</div>
+            <label class="upload-btn">
+              اختر ملف
+              <input type="file" id="fileBooks" accept=".xlsx,.xls,.xlsm">
+            </label>
+            <div class="upload-status" id="statusBooks">لم يتم رفع ملف بعد</div>
+          </div>
+          <div class="upload-box" id="boxBank">
+            <h4>كشف البنك أو الحساب المقابل</h4>
+            <div style="font-size:12px;color:var(--muted);">ملف إكسيل يحتوي: التاريخ / رقم المرجع / بيان / مدين / دائن</div>
+            <label class="upload-btn">
+              اختر ملف
+              <input type="file" id="fileBank" accept=".xlsx,.xls,.xlsm">
+            </label>
+            <div class="upload-status" id="statusBank">لم يتم رفع ملف بعد</div>
+          </div>
+        </div>
+
+        <div class="summary-cards" id="summaryCards" style="display:none;">
+          <div class="card">
+            <div class="label">الرصيد الدفترى (نهائي)</div>
+            <div class="value" id="sumBooks">0.00</div>
+          </div>
+          <div class="card">
+            <div class="label">رصيد كشف البنك (نهائي)</div>
+            <div class="value" id="sumBank">0.00</div>
+          </div>
+          <div class="card" id="sumMatchCard">
+            <div class="label">حالة المطابقة</div>
+            <div class="value" id="sumMatch">—</div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px;">
+          <button class="action" id="btnProceed" disabled>استخراج الاختلافات ⟵</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 2: DIFFERENCES ============ -->
+  <div class="view" id="view-diff">
+    <div class="panel">
+      <div class="panel-body" id="diffTables"></div>
+    </div>
+    <div style="text-align:left;">
+      <button class="action gold" id="btnToMemo">الانتقال إلى المذكرة ⟵</button>
+    </div>
+  </div>
+
+  <!-- ============ TAB: REVIEW ============ -->
+  <div class="view" id="view-review">
+    <div class="panel">
+      <div class="panel-head">مراجعة — أماكن الاحتمال بوقوع خطأ</div>
+      <div class="panel-body">
+        <div class="table-desc">
+          المبالغ الظاهرة تحت اتكررت أكتر من مرة في نفس الجدول — يعني في احتمال إن الاختيار (تسوية / لا تعديل) يتحط في الصف الغلط بينهم. راجعها باستخدام صفحة "البحث" للتأكد من كل حالة على حدة.
+        </div>
+        <div id="reviewTables" style="margin-top:14px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 3: SEARCH ============ -->
+  <div class="view" id="view-search">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="subtab-row">
+          <button class="subtab-btn active" data-sub="p1">البحث فى (جدول 1 و 2) — مدين دفاتر الشركة / دائن البنك</button>
+          <button class="subtab-btn" data-sub="p2">البحث فى (جدول 3 و 4) — دائن دفاتر الشركة / مدين البنك</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="table-desc">
+          لو نفس المبلغ اتكرر أكتر من مرة، اكتب المبلغ في نفس الخانتين تحت وقارن بصريًا بين النصفين (بالتاريخ ورقم المرجع) عشان تحدد أي نسخة مش ليها نظير مطابق في الجانب التاني.
+        </div>
+
+        <div class="search-page active" id="search-p1">
+          <div class="split2">
+            <div class="split-half">
+              <div class="split-half-head">دفاتر الشركة (مدين)</div>
+              <div class="split-half-body">
+                <input type="text" id="searchP1Books" placeholder="ابحث عن مبلغ...">
+                <div id="resultsP1Books"></div>
+              </div>
+            </div>
+            <div class="split-half">
+              <div class="split-half-head">دفاتر البنك (دائن)</div>
+              <div class="split-half-body">
+                <input type="text" id="searchP1Bank" placeholder="ابحث عن مبلغ...">
+                <div id="resultsP1Bank"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="search-page" id="search-p2">
+          <div class="split2">
+            <div class="split-half">
+              <div class="split-half-head">دفاتر البنك (مدين)</div>
+              <div class="split-half-body">
+                <input type="text" id="searchP2Bank" placeholder="ابحث عن مبلغ...">
+                <div id="resultsP2Bank"></div>
+              </div>
+            </div>
+            <div class="split-half">
+              <div class="split-half-head">دفاتر الشركة (دائن)</div>
+              <div class="split-half-body">
+                <input type="text" id="searchP2Books" placeholder="ابحث عن مبلغ...">
+                <div id="resultsP2Books"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 4: MEMO ============ -->
+  <div class="view" id="view-memo">
+    <div class="panel">
+      <div class="panel-head">مذكرة التسوية البنكية</div>
+      <div class="panel-body" id="memoBody"></div>
+    </div>
+    <div style="text-align:left;">
+      <button class="action gold" id="btnToApply">الانتقال إلى تطبيق التسوية ⟵</button>
+    </div>
+  </div>
+
+  <!-- ============ TAB 5: APPLY ============ -->
+  <div class="view" id="view-apply">
+    <div class="panel">
+      <div class="panel-head">تطبيق التسوية البنكية — القيود المطلوبة في الدفاتر</div>
+      <div class="panel-body" id="applyBody"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ================= STATE ================= */
+const state = {
+  openingBooks: 0,
+  openingBank: 0,
+  booksEntries: [],   // {date, ref, desc, debit, credit, balance}
+  bankEntries: [],
+  booksBalance: 0,
+  bankBalance: 0,
+  tables: { t1: [], t2: [], t3: [], t4: [] } // each item: {date, ref, desc, amount, selected:bool}
+};
+
+const TABLE_META = {
+  t1: {
+    title: 'الجدول 1',
+    desc: 'مبالغ أضيفت في مدين الدفاتر ولم تضاف في دائن البنك',
+    action: 'يخصم من مدين الدفاتر',
+    ownLabel: 'الشركة', cpLabel: 'البنك'
+  },
+  t2: {
+    title: 'الجدول 2',
+    desc: 'مبالغ أضيفت في دائن البنك ولم تضاف في مدين الدفاتر',
+    action: 'يضاف الى مدين الدفاتر',
+    ownLabel: 'البنك', cpLabel: 'الشركة'
+  },
+  t3: {
+    title: 'الجدول 3',
+    desc: 'مبالغ خصمت من دائن الدفاتر ولم تخصم من مدين البنك',
+    action: 'يخصم من دائن الدفاتر',
+    ownLabel: 'الشركة', cpLabel: 'البنك'
+  },
+  t4: {
+    title: 'الجدول 4',
+    desc: 'مبالغ خصمت من مدين البنك ولم تخصم من دائن الدفاتر',
+    action: 'يضاف الى دائن الدفاتر',
+    ownLabel: 'البنك', cpLabel: 'الشركة'
+  }
+};
+
+/* ================= TABS ================= */
+function showTab(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab===name);
+  });
+}
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    if(btn.disabled) return;
+    if(btn.dataset.tab === 'review'){
+      try{
+        await fetchReview();
+      }catch(err){
+        alert('حدث خطأ أثناء حساب المراجعة: '+err.message);
+        return;
+      }
+    }
+    showTab(btn.dataset.tab);
+  });
+});
+
+function enableTab(name){
+  document.querySelector('.tab-btn[data-tab="'+name+'"]').disabled = false;
+}
+
+/* ================= OPENING BALANCE ================= */
+function checkOpeningBalance(){
+  const bd = parseFloat(document.getElementById('openingBooksDebit').value) || 0;
+  const bc = parseFloat(document.getElementById('openingBooksCredit').value) || 0;
+  const kd = parseFloat(document.getElementById('openingBankDebit').value) || 0;
+  const kc = parseFloat(document.getElementById('openingBankCredit').value) || 0;
+  state.openingBooks = bd - bc;
+  state.openingBank = kd - kc;
+  const diff = state.openingBooks + state.openingBank;
+  document.getElementById('openingWarn').style.display = (Math.abs(diff) > 0.009) ? 'block' : 'none';
+}
+['openingBooksDebit','openingBooksCredit','openingBankDebit','openingBankCredit'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', checkOpeningBalance);
+});
+
+/* ================= EXCEL PARSING ================= */
+const HEADER_MAP = {
+  date: ['التاريخ','تاريخ'],
+  ref: ['رقم المرجع','رقم مرجع'],
+  desc: ['بيان'],
+  debit: ['مدين'],
+  credit: ['دائن']
+};
+
+function normalize(s){
+  return (s===null||s===undefined) ? '' : String(s).trim();
+}
+
+function findHeaderRow(rows){
+  for(let r=0; r<Math.min(rows.length, 20); r++){
+    const row = rows[r] || [];
+    const found = {};
+    for(let c=0;c<row.length;c++){
+      const cellText = normalize(row[c]);
+      for(const key in HEADER_MAP){
+        if(HEADER_MAP[key].includes(cellText) && !(key in found)){
+          found[key] = c;
+        }
+      }
+    }
+    if('date' in found && 'debit' in found && 'credit' in found){
+      return {rowIndex:r, cols:found};
+    }
+  }
+  return null;
+}
+
+function excelSerialToDate(v){
+  if(v instanceof Date) return v;
+  if(typeof v === 'number'){
+    // Excel serial date
+    const utc_days = Math.floor(v - 25569);
+    const utc_value = utc_days * 86400;
+    const d = new Date(utc_value * 1000);
+    return d;
+  }
+  return null;
+}
+
+function formatDate(v){
+  const d = excelSerialToDate(v);
+  if(d && !isNaN(d.getTime())){
+    const dd = String(d.getUTCDate()).padStart(2,'0');
+    const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+    const yy = d.getUTCFullYear();
+    return dd+'/'+mm+'/'+yy;
+  }
+  return normalize(v);
+}
+
+function parseNumber(v){
+  if(v===null||v===undefined||v==='') return 0;
+  if(typeof v === 'number') return v;
+  const cleaned = String(v).replace(/,/g,'').trim();
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+function parseWorkbookFile(file, callback){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:false});
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+      const header = findHeaderRow(rows);
+      if(!header){
+        callback({error:'لم يتم العثور على أعمدة (التاريخ / مدين / دائن) في الملف.'});
+        return;
+      }
+      const entries = [];
+      let blankStreak = 0;
+      for(let r=header.rowIndex+1; r<rows.length; r++){
+        const row = rows[r] || [];
+        const dateV = row[header.cols.date];
+        const refV = header.cols.ref!==undefined ? row[header.cols.ref] : null;
+        const descV = header.cols.desc!==undefined ? row[header.cols.desc] : null;
+        const debitV = row[header.cols.debit];
+        const creditV = row[header.cols.credit];
+        const isEmpty = (dateV===null||dateV==='') && (debitV===null||debitV==='') && (creditV===null||creditV==='');
+        if(isEmpty){
+          blankStreak++;
+          if(blankStreak>=3) break;
+          continue;
+        }
+        blankStreak = 0;
+        entries.push({
+          date: dateV,
+          ref: normalize(refV),
+          desc: normalize(descV),
+          debit: parseNumber(debitV),
+          credit: parseNumber(creditV)
+        });
+      }
+      callback({entries});
+    }catch(err){
+      callback({error:'تعذر قراءة الملف: '+err.message});
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ================= UPLOAD HANDLERS ================= */
+document.getElementById('fileBooks').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  document.getElementById('statusBooks').textContent = 'جارٍ القراءة...';
+  document.getElementById('statusBooks').className = 'upload-status';
+  parseWorkbookFile(file, (res)=>{
+    if(res.error){
+      document.getElementById('statusBooks').textContent = res.error;
+      return;
+    }
+    state.booksEntries = res.entries;
+    document.getElementById('statusBooks').textContent = 'تم رفع '+res.entries.length+' حركة بنجاح ✓';
+    document.getElementById('statusBooks').className = 'upload-status done';
+    recalcAll();
+  });
+});
+
+document.getElementById('fileBank').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  document.getElementById('statusBank').textContent = 'جارٍ القراءة...';
+  document.getElementById('statusBank').className = 'upload-status';
+  parseWorkbookFile(file, (res)=>{
+    if(res.error){
+      document.getElementById('statusBank').textContent = res.error;
+      return;
+    }
+    state.bankEntries = res.entries;
+    document.getElementById('statusBank').textContent = 'تم رفع '+res.entries.length+' حركة بنجاح ✓';
+    document.getElementById('statusBank').className = 'upload-status done';
+    recalcAll();
+  });
+});
+
+function fmtMoney(n){
+  return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+async function recalcAll(){
+  checkOpeningBalance();
+  if(state.booksEntries.length===0 || state.bankEntries.length===0) return;
+
+  document.getElementById('btnProceed').disabled = true;
+  document.getElementById('btnProceed').textContent = 'جارٍ الحساب...';
+
+  try{
+    const res = await fetch('/api/reconcile', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        booksEntries: state.booksEntries,
+        bankEntries: state.bankEntries,
+        openingBooks: state.openingBooks,
+        openingBank: state.openingBank
+      })
+    });
+    if(!res.ok) throw new Error('فشل الاتصال بالسيرفر');
+    const data = await res.json();
+
+    state.booksBalance = data.booksBalance;
+    state.bankBalance = data.bankBalance;
+    state.tables = data.tables;
+
+    document.getElementById('summaryCards').style.display = 'grid';
+    document.getElementById('sumBooks').textContent = fmtMoney(state.booksBalance);
+    document.getElementById('sumBank').textContent = fmtMoney(state.bankBalance);
+
+    const diff = state.booksBalance + state.bankBalance;
+    const matched = Math.abs(diff) < 0.01;
+    const card = document.getElementById('sumMatchCard');
+    const val = document.getElementById('sumMatch');
+    card.className = 'card ' + (matched ? 'match' : 'mismatch');
+    val.textContent = matched ? 'رصيد مطابق' : 'رصيد غير مطابق';
+
+    renderDifferenceTables();
+    enableTab('diff');
+    enableTab('review');
+    enableTab('search');
+  }catch(err){
+    alert('حدث خطأ أثناء الاتصال بالسيرفر: '+err.message);
+  }finally{
+    document.getElementById('btnProceed').disabled = false;
+    document.getElementById('btnProceed').textContent = 'استخراج الاختلافات ⟵';
+  }
+}
+
+/* ================= DIFFERENCE MATCHING ================= */
+/* الخوارزمية الفعلية (المطابقة واستخراج الجداول) تعمل الآن على السيرفر عبر /api/reconcile */
+function roundKey(n){
+  return Math.round(n*100)/100;
+}
+
+function renderDifferenceTables(){
+  const container = document.getElementById('diffTables');
+  container.innerHTML = '';
+  ['t1','t2','t3','t4'].forEach(key=>{
+    const meta = TABLE_META[key];
+    const rows = state.tables[key];
+
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '28px';
+    wrap.innerHTML = `<div class="table-title">${meta.title} <span style="color:var(--muted);font-weight:400;">(${rows.length} فرق)</span></div>
+      <div class="table-desc">${meta.desc}</div>`;
+
+    if(rows.length===0){
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'لا يوجد اختلافات في هذا الجدول';
+      wrap.appendChild(empty);
+    } else {
+      const scroll = document.createElement('div');
+      scroll.className = 'table-scroll';
+      const table = document.createElement('table');
+      table.innerHTML = `<thead><tr>
+          <th>التاريخ</th><th>رقم المرجع</th><th>بيان</th><th>المبلغ</th><th>${meta.ownLabel}</th><th>${meta.cpLabel}</th><th>التسوية</th>
+        </tr>
+        <tr class="filter-row">
+          <th><input type="text" class="col-filter" data-col="date" placeholder="فلتر..."></th>
+          <th><input type="text" class="col-filter" data-col="ref" placeholder="فلتر..."></th>
+          <th><input type="text" class="col-filter" data-col="desc" placeholder="فلتر..."></th>
+          <th><input type="text" class="col-filter" data-col="amount" placeholder="فلتر..."></th>
+          <th><input type="text" class="col-filter" data-col="ownCount" placeholder="فلتر..."></th>
+          <th><input type="text" class="col-filter" data-col="cpCount" placeholder="فلتر..."></th>
+          <th></th>
+        </tr>
+      </thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+
+      function renderRows(filters){
+        tbody.innerHTML = '';
+        rows.filter(row=>{
+          if(filters.date && !formatDate(row.date).includes(filters.date)) return false;
+          if(filters.ref && !String(row.ref||'').includes(filters.ref)) return false;
+          if(filters.desc && !String(row.desc||'').includes(filters.desc)) return false;
+          if(filters.amount && !String(row.amount).includes(filters.amount)) return false;
+          if(filters.ownCount!==undefined && filters.ownCount!=='' && String(row.ownCount)!==filters.ownCount) return false;
+          if(filters.cpCount!==undefined && filters.cpCount!=='' && String(row.cpCount)!==filters.cpCount) return false;
+          return true;
+        }).forEach(row=>{
+          const tr = document.createElement('tr');
+          const ownStyle = row.ownCount>1 ? ' style="color:var(--danger);font-weight:700;"' : '';
+          const cpStyle = row.cpCount>1 ? ' style="color:var(--danger);font-weight:700;"' : '';
+          tr.innerHTML = `<td>${formatDate(row.date)}</td><td>${row.ref||''}</td><td>${row.desc||''}</td><td>${fmtMoney(row.amount)}</td><td${ownStyle}>${row.ownCount}</td><td${cpStyle}>${row.cpCount}</td><td></td>`;
+          const select = document.createElement('select');
+          select.className = 'recon-select';
+          select.innerHTML = `<option value="none">لا تعديل</option><option value="adjust">${meta.action}</option>`;
+          select.value = row.selected ? 'adjust' : 'none';
+          select.classList.toggle('adjusted', row.selected);
+          select.addEventListener('change', function(){
+            row.selected = (this.value === 'adjust');
+            this.classList.toggle('adjusted', row.selected);
+          });
+          tr.lastElementChild.appendChild(select);
+          tbody.appendChild(tr);
+        });
+      }
+
+      const filters = {};
+      table.querySelectorAll('.col-filter').forEach(inp=>{
+        inp.addEventListener('input', ()=>{
+          filters[inp.dataset.col] = inp.value.trim();
+          renderRows(filters);
+        });
+      });
+
+      renderRows(filters);
+      scroll.appendChild(table);
+      wrap.appendChild(scroll);
+    }
+    container.appendChild(wrap);
+  });
+}
+
+document.getElementById('btnProceed').addEventListener('click', ()=>{
+  showTab('diff');
+});
+
+/* ================= REVIEW (server-computed) ================= */
+async function fetchReview(){
+  const res = await fetch('/api/review', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      booksEntries: state.booksEntries,
+      bankEntries: state.bankEntries,
+      tables: state.tables
+    })
+  });
+  if(!res.ok) throw new Error('فشل الاتصال بالسيرفر');
+  const data = await res.json();
+  renderReview(data);
+}
+
+function renderReview(data){
+  const container = document.getElementById('reviewTables');
+  const cols = ['t1','t2','t3','t4'];
+  let html = '<div class="table-scroll"><table><thead><tr>';
+  cols.forEach(k=>{ html += `<th colspan="2" style="text-align:center;">${TABLE_META[k].title}</th>`; });
+  html += '</tr><tr>';
+  cols.forEach(()=>{ html += '<th>المبلغ</th><th>الخطأ</th>'; });
+  html += '</tr></thead><tbody>';
+
+  const errLists = cols.map(k => data[k] || []);
+  const maxLen = Math.max(1, ...errLists.map(l=>l.length));
+  const anyErrors = errLists.some(l=>l.length>0);
+
+  for(let i=0;i<maxLen;i++){
+    html += '<tr>';
+    errLists.forEach(list=>{
+      if(list[i]){
+        html += `<td>${fmtMoney(list[i].amount)}</td><td style="color:var(--danger);font-weight:700;">${list[i].error}</td>`;
+      } else {
+        html += '<td>-</td><td>-</td>';
+      }
+    });
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  if(!anyErrors){
+    html = '<div class="note" style="background:#e9f4ee;color:var(--ok);font-weight:700;">✓ لا يوجد اخطاء — كل الفروقات تم تحديد التسوية الخاصة بها بشكل صحيح.</div>' + html;
+  }
+
+  container.innerHTML = html;
+}
+
+/* ================= SEARCH ================= */
+document.querySelectorAll('.subtab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.search-page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('search-'+btn.dataset.sub).classList.add('active');
+  });
+});
+
+function renderFieldSearch(inputId, containerId, entries, field, amtLabel){
+  const input = document.getElementById(inputId);
+  const container = document.getElementById(containerId);
+  const raw = input.value;
+  if(!raw){ container.innerHTML=''; return; }
+  const q = roundKey(parseFloat(raw));
+  if(isNaN(q)){ container.innerHTML=''; return; }
+  const matches = entries.filter(e => e[field]>0 && roundKey(e[field])===q);
+  if(matches.length===0){
+    container.innerHTML = '<div class="empty-state">لا يوجد أي ظهور لهذا المبلغ</div>';
+    return;
+  }
+  let html = `<div class="table-scroll"><table><thead><tr>
+    <th>التاريخ</th><th>رقم المرجع</th><th>بيان</th><th>${amtLabel}</th>
+  </tr></thead><tbody>`;
+  matches.forEach(m=>{
+    html += `<tr><td>${formatDate(m.date)}</td><td>${m.ref||''}</td><td>${m.desc||''}</td><td>${fmtMoney(m[field])}</td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+document.getElementById('searchP1Books').addEventListener('input', ()=>{
+  renderFieldSearch('searchP1Books','resultsP1Books', state.booksEntries, 'debit', 'مدين');
+});
+document.getElementById('searchP1Bank').addEventListener('input', ()=>{
+  renderFieldSearch('searchP1Bank','resultsP1Bank', state.bankEntries, 'credit', 'دائن');
+});
+document.getElementById('searchP2Bank').addEventListener('input', ()=>{
+  renderFieldSearch('searchP2Bank','resultsP2Bank', state.bankEntries, 'debit', 'مدين');
+});
+document.getElementById('searchP2Books').addEventListener('input', ()=>{
+  renderFieldSearch('searchP2Books','resultsP2Books', state.booksEntries, 'credit', 'دائن');
+});
+
+/* ================= MEMO & APPLY (server-computed) ================= */
+async function fetchMemo(){
+  const res = await fetch('/api/memo', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      tables: state.tables,
+      booksBalance: state.booksBalance,
+      bankBalance: state.bankBalance
+    })
+  });
+  if(!res.ok) throw new Error('فشل الاتصال بالسيرفر');
+  state.memo = await res.json();
+}
+
+document.getElementById('btnToMemo').addEventListener('click', async ()=>{
+  try{
+    await fetchMemo();
+    renderMemoBody();
+    showTab('memo');
+  }catch(err){
+    alert('حدث خطأ أثناء حساب المذكرة: '+err.message);
+  }
+});
+
+function renderMemoBody(){
+  const m = state.memo;
+  const diff = m.bankBalance + m.booksAfter;
+  const body = document.getElementById('memoBody');
+  body.innerHTML = `
+    <div class="memo-row"><span class="lbl">رصيد الدفاتر قبل التسوية</span><span class="amt">${fmtMoney(m.booksBefore)}</span></div>
+    <div class="memo-row"><span class="lbl">(-) ${TABLE_META.t1.action} — ${TABLE_META.t1.desc}</span><span class="amt">${fmtMoney(m.e4)}</span></div>
+    <div class="memo-row"><span class="lbl">(+) ${TABLE_META.t2.action} — ${TABLE_META.t2.desc}</span><span class="amt">${fmtMoney(m.e5)}</span></div>
+    <div class="memo-row"><span class="lbl">(+) ${TABLE_META.t3.action} — ${TABLE_META.t3.desc}</span><span class="amt">${fmtMoney(m.e6)}</span></div>
+    <div class="memo-row"><span class="lbl">(-) ${TABLE_META.t4.action} — ${TABLE_META.t4.desc}</span><span class="amt">${fmtMoney(m.e7)}</span></div>
+    <div class="memo-row total"><span class="lbl">رصيد الدفاتر بعد التسوية</span><span class="amt">${fmtMoney(m.booksAfter)}</span></div>
+    <div class="memo-row"><span class="lbl">الرصيد طبقًا لكشف البنك أو الحساب المقابل</span><span class="amt">${fmtMoney(m.bankBalance)}</span></div>
+    <div class="note" style="margin-top:14px;background:${m.matched?'#e9f4ee':'#fdecea'};color:${m.matched?'var(--ok)':'var(--danger-deep)'};font-weight:700;">
+      ${m.matched ? '✓ الرصيدان متطابقان بعد التسوية' : '✗ لا يزال هناك فرق قدره ' + fmtMoney(Math.abs(diff)) + ' — راجع اختيارات التسوية في بيان الاختلافات'}
+    </div>
+    <div class="note">
+      ملحوظة: كشف البنك يُسجَّل عادةً بعكس اتجاه دفاتر الشركة لنفس الحركة (الإيداع دائن عند البنك ومدين عند الشركة)، لذلك تُعتبر التسوية مطابقة عندما يكون مجموع الرصيدين صفرًا.
+    </div>
+  `;
+  enableTab('memo');
+}
+
+document.getElementById('btnToApply').addEventListener('click', async ()=>{
+  try{
+    await fetchMemo();
+    renderApplyBody();
+    showTab('apply');
+  }catch(err){
+    alert('حدث خطأ أثناء حساب قيود التطبيق: '+err.message);
+  }
+});
+
+function renderApplyBody(){
+  const m = state.memo;
+  const {del1, del3, add2, add4} = m.apply;
+
+  function quadTable(rows, empty){
+    if(rows.length===0) return `<div class="empty-state">${empty}</div>`;
+    let html = `<div class="table-scroll"><table><thead><tr><th>التاريخ</th><th>بيان</th><th>المبلغ</th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      html += `<tr><td>${formatDate(r.date)}</td><td>${r.desc||''}</td><td>${fmtMoney(r.amount)}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  const body = document.getElementById('applyBody');
+  body.innerHTML = `
+    <div class="quad-grid">
+      <div class="quad">
+        <div class="quad-head del">قيود تُحذف من الدفاتر — مدين</div>
+        <div class="quad-sub">${TABLE_META.t1.desc}</div>
+        ${quadTable(del1, 'لا يوجد قيود')}
+      </div>
+      <div class="quad">
+        <div class="quad-head add">قيود تُضاف إلى الدفاتر — مدين</div>
+        <div class="quad-sub">${TABLE_META.t2.desc}</div>
+        ${quadTable(add2, 'لا يوجد قيود')}
+      </div>
+      <div class="quad">
+        <div class="quad-head del">قيود تُحذف من الدفاتر — دائن</div>
+        <div class="quad-sub">${TABLE_META.t3.desc}</div>
+        ${quadTable(del3, 'لا يوجد قيود')}
+      </div>
+      <div class="quad">
+        <div class="quad-head add">قيود تُضاف إلى الدفاتر — دائن</div>
+        <div class="quad-sub">${TABLE_META.t4.desc}</div>
+        ${quadTable(add4, 'لا يوجد قيود')}
+      </div>
+    </div>
+    <div class="summary-cards" style="margin-top:20px;">
+      <div class="card">
+        <div class="label">رصيد الدفاتر بعد التسوية</div>
+        <div class="value">${fmtMoney(m.booksAfter)}</div>
+      </div>
+      <div class="card">
+        <div class="label">رصيد كشف البنك</div>
+        <div class="value">${fmtMoney(m.bankBalance)}</div>
+      </div>
+      <div class="card ${m.matched?'match':'mismatch'}">
+        <div class="label">حالة المطابقة النهائية</div>
+        <div class="value">${m.matched ? 'مطابق' : 'غير مطابق'}</div>
+      </div>
+    </div>
+  `;
+  enableTab('apply');
+}
+</script>
+
+</body>
+</html>
