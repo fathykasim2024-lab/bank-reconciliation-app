@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مطابقة الحسابات البنكية</title>
+<title>مطابقة اون لاين - اتعلم مع Fathy Kasim</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --ink:#16202a;
@@ -36,6 +37,7 @@
     color:#fff;
     padding:20px 28px;
     border-bottom:4px solid var(--gold);
+    position:relative;
   }
   header h1{
     font-size:21px;
@@ -354,13 +356,20 @@
     border-radius:var(--radius);
     margin-bottom:10px;
   }
+  @media print{
+    header, nav.tabs, #btnToApply, #btnProceed{display:none !important;}
+    .view:not(.active){display:none !important;}
+    .panel-head button{display:none !important;}
+    main{padding:0;max-width:none;}
+    .table-scroll{max-height:none !important;overflow:visible !important;}
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>مطابقة الحسابات البنكية</h1>
-  <div class="sub">رفع كشف الحساب الدفترى والبنكى — استخراج الاختلافات — بناء مذكرة التسوية</div>
+  <h1>مطابقة اون لاين - اتعلم مع Fathy Kasim</h1>
+  <div class="sub">ارفع كشف الحساب الدفترى والكشف المقابل وطابق الحسابات فى دقائق</div>
 </header>
 
 <nav class="tabs">
@@ -376,6 +385,11 @@
 
   <!-- ============ TAB 1: DATA ENTRY ============ -->
   <div class="view active" id="view-data">
+
+    <div id="restoreBanner" style="display:none;background:#e3ecf5;color:var(--navy);border:1px solid #c9d6e5;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13.5px;font-weight:700;display:flex;justify-content:space-between;align-items:center;">
+      <span id="restoreBannerText"></span>
+      <button onclick="clearSavedState()" style="background:transparent;border:1px solid var(--navy);color:var(--navy);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;padding:5px 12px;border-radius:var(--radius);cursor:pointer;">مسح البيانات والبدء من جديد</button>
+    </div>
 
     <div class="panel">
       <div class="panel-head">الأرصدة الافتتاحية</div>
@@ -542,7 +556,13 @@
   <!-- ============ TAB 4: MEMO ============ -->
   <div class="view" id="view-memo">
     <div class="panel">
-      <div class="panel-head">مذكرة التسوية البنكية</div>
+      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>مذكرة التسوية البنكية</span>
+        <div style="display:flex;gap:8px;">
+          <button class="action" id="btnPrintMemo">🖨️ طباعة</button>
+          <button class="action gold" id="btnPdfMemo">⬇️ تنزيل PDF</button>
+        </div>
+      </div>
       <div class="panel-body" id="memoBody"></div>
     </div>
     <div style="text-align:left;">
@@ -553,7 +573,13 @@
   <!-- ============ TAB 5: APPLY ============ -->
   <div class="view" id="view-apply">
     <div class="panel">
-      <div class="panel-head">تطبيق التسوية البنكية — القيود المطلوبة في الدفاتر</div>
+      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>تطبيق التسوية البنكية — القيود المطلوبة في الدفاتر</span>
+        <div style="display:flex;gap:8px;">
+          <button class="action" id="btnPrintApply">🖨️ طباعة</button>
+          <button class="action gold" id="btnPdfApply">⬇️ تنزيل PDF</button>
+        </div>
+      </div>
       <div class="panel-body" id="applyBody"></div>
     </div>
   </div>
@@ -571,6 +597,91 @@ const state = {
   bankBalance: 0,
   tables: { t1: [], t2: [], t3: [], t4: [] } // each item: {date, ref, desc, amount, selected:bool}
 };
+
+/* ================= LOCAL PERSISTENCE (localStorage) ================= */
+const STORAGE_KEY = 'bankReconciliationState_v1';
+
+function saveState(){
+  try{
+    const payload = {
+      openingBooksDebit: document.getElementById('openingBooksDebit').value,
+      openingBooksCredit: document.getElementById('openingBooksCredit').value,
+      openingBankDebit: document.getElementById('openingBankDebit').value,
+      openingBankCredit: document.getElementById('openingBankCredit').value,
+      booksEntries: state.booksEntries,
+      bankEntries: state.bankEntries,
+      booksBalance: state.booksBalance,
+      bankBalance: state.bankBalance,
+      tables: state.tables,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }catch(e){
+    console.warn('تعذر حفظ البيانات محليًا', e);
+  }
+}
+
+function clearSavedState(){
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+function restoreState(){
+  let raw;
+  try{
+    raw = localStorage.getItem(STORAGE_KEY);
+  }catch(e){ return; }
+  if(!raw) return;
+  let data;
+  try{
+    data = JSON.parse(raw);
+  }catch(e){ return; }
+  if(!data || !data.booksEntries || !data.bankEntries) return;
+  if(data.booksEntries.length===0 || data.bankEntries.length===0) return;
+
+  document.getElementById('openingBooksDebit').value = data.openingBooksDebit || 0;
+  document.getElementById('openingBooksCredit').value = data.openingBooksCredit || 0;
+  document.getElementById('openingBankDebit').value = data.openingBankDebit || 0;
+  document.getElementById('openingBankCredit').value = data.openingBankCredit || 0;
+  checkOpeningBalance();
+
+  state.booksEntries = data.booksEntries;
+  state.bankEntries = data.bankEntries;
+  state.booksBalance = data.booksBalance;
+  state.bankBalance = data.bankBalance;
+  state.tables = data.tables;
+
+  const savedDate = data.savedAt ? new Date(data.savedAt).toLocaleString('ar-EG') : '';
+  document.getElementById('statusBooks').textContent = 'تم استرجاع '+state.booksEntries.length+' حركة محفوظة ✓';
+  document.getElementById('statusBooks').className = 'upload-status done';
+  document.getElementById('statusBank').textContent = 'تم استرجاع '+state.bankEntries.length+' حركة محفوظة ✓';
+  document.getElementById('statusBank').className = 'upload-status done';
+
+  document.getElementById('summaryCards').style.display = 'grid';
+  document.getElementById('sumBooks').textContent = fmtMoney(state.booksBalance);
+  document.getElementById('sumBank').textContent = fmtMoney(state.bankBalance);
+  const diff = state.booksBalance + state.bankBalance;
+  const matched = Math.abs(diff) < 0.01;
+  const card = document.getElementById('sumMatchCard');
+  const val = document.getElementById('sumMatch');
+  card.className = 'card ' + (matched ? 'match' : 'mismatch');
+  val.textContent = matched ? 'رصيد مطابق' : 'رصيد غير مطابق';
+
+  document.getElementById('btnProceed').disabled = false;
+  renderDifferenceTables();
+  enableTab('diff');
+  enableTab('review');
+  enableTab('search');
+
+  if(savedDate){
+    const banner = document.getElementById('restoreBanner');
+    const bannerText = document.getElementById('restoreBannerText');
+    if(banner && bannerText){
+      banner.style.display = 'flex';
+      bannerText.textContent = '↺ تم استرجاع بياناتك المحفوظة تلقائيًا من آخر جلسة (' + savedDate + ')';
+    }
+  }
+}
 
 const TABLE_META = {
   t1: {
@@ -638,7 +749,10 @@ function checkOpeningBalance(){
   document.getElementById('openingWarn').style.display = (Math.abs(diff) > 0.009) ? 'block' : 'none';
 }
 ['openingBooksDebit','openingBooksCredit','openingBankDebit','openingBankCredit'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', checkOpeningBalance);
+  document.getElementById(id).addEventListener('input', ()=>{
+    checkOpeningBalance();
+    saveState();
+  });
 });
 
 /* ================= EXCEL PARSING ================= */
@@ -793,52 +907,56 @@ async function recalcAll(){
   checkOpeningBalance();
   if(state.booksEntries.length===0 || state.bankEntries.length===0) return;
 
-  document.getElementById('btnProceed').disabled = true;
-  document.getElementById('btnProceed').textContent = 'جارٍ الحساب...';
-
+  let result;
   try{
-    const res = await fetch('/api/reconcile', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const res = await fetch('/api/recalc', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
+        openingBooksDebit: document.getElementById('openingBooksDebit').value,
+        openingBooksCredit: document.getElementById('openingBooksCredit').value,
+        openingBankDebit: document.getElementById('openingBankDebit').value,
+        openingBankCredit: document.getElementById('openingBankCredit').value,
         booksEntries: state.booksEntries,
-        bankEntries: state.bankEntries,
-        openingBooks: state.openingBooks,
-        openingBank: state.openingBank
+        bankEntries: state.bankEntries
       })
     });
-    if(!res.ok) throw new Error('فشل الاتصال بالسيرفر');
-    const data = await res.json();
-
-    state.booksBalance = data.booksBalance;
-    state.bankBalance = data.bankBalance;
-    state.tables = data.tables;
-
-    document.getElementById('summaryCards').style.display = 'grid';
-    document.getElementById('sumBooks').textContent = fmtMoney(state.booksBalance);
-    document.getElementById('sumBank').textContent = fmtMoney(state.bankBalance);
-
-    const diff = state.booksBalance + state.bankBalance;
-    const matched = Math.abs(diff) < 0.01;
-    const card = document.getElementById('sumMatchCard');
-    const val = document.getElementById('sumMatch');
-    card.className = 'card ' + (matched ? 'match' : 'mismatch');
-    val.textContent = matched ? 'رصيد مطابق' : 'رصيد غير مطابق';
-
-    renderDifferenceTables();
-    enableTab('diff');
-    enableTab('review');
-    enableTab('search');
+    if(!res.ok) throw new Error('فشل الاتصال بالخادم');
+    result = await res.json();
+    if(result.error) throw new Error(result.error);
   }catch(err){
-    alert('حدث خطأ أثناء الاتصال بالسيرفر: '+err.message);
-  }finally{
-    document.getElementById('btnProceed').disabled = false;
-    document.getElementById('btnProceed').textContent = 'استخراج الاختلافات ⟵';
+    alert('حدث خطأ أثناء الحساب: '+err.message);
+    return;
   }
+
+  state.openingBooks = result.openingBooks;
+  state.openingBank = result.openingBank;
+  state.booksEntries = result.booksEntries;
+  state.bankEntries = result.bankEntries;
+  state.booksBalance = result.booksBalance;
+  state.bankBalance = result.bankBalance;
+  state.tables = result.tables;
+
+  document.getElementById('summaryCards').style.display = 'grid';
+  document.getElementById('sumBooks').textContent = fmtMoney(state.booksBalance);
+  document.getElementById('sumBank').textContent = fmtMoney(state.bankBalance);
+
+  const diff = state.booksBalance + state.bankBalance;
+  const matched = Math.abs(diff) < 0.01;
+  const card = document.getElementById('sumMatchCard');
+  const val = document.getElementById('sumMatch');
+  card.className = 'card ' + (matched ? 'match' : 'mismatch');
+  val.textContent = matched ? 'رصيد مطابق' : 'رصيد غير مطابق';
+
+  document.getElementById('btnProceed').disabled = false;
+  renderDifferenceTables();
+  enableTab('diff');
+  enableTab('review');
+  enableTab('search');
+  saveState();
 }
 
 /* ================= DIFFERENCE MATCHING ================= */
-/* الخوارزمية الفعلية (المطابقة واستخراج الجداول) تعمل الآن على السيرفر عبر /api/reconcile */
 function roundKey(n){
   return Math.round(n*100)/100;
 }
@@ -902,6 +1020,7 @@ function renderDifferenceTables(){
           select.addEventListener('change', function(){
             row.selected = (this.value === 'adjust');
             this.classList.toggle('adjusted', row.selected);
+            saveState();
           });
           tr.lastElementChild.appendChild(select);
           tbody.appendChild(tr);
@@ -931,16 +1050,17 @@ document.getElementById('btnProceed').addEventListener('click', ()=>{
 /* ================= REVIEW (server-computed) ================= */
 async function fetchReview(){
   const res = await fetch('/api/review', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       booksEntries: state.booksEntries,
       bankEntries: state.bankEntries,
       tables: state.tables
     })
   });
-  if(!res.ok) throw new Error('فشل الاتصال بالسيرفر');
+  if(!res.ok) throw new Error('فشل الاتصال بالخادم');
   const data = await res.json();
+  if(data.error) throw new Error(data.error);
   renderReview(data);
 }
 
@@ -1025,16 +1145,18 @@ document.getElementById('searchP2Books').addEventListener('input', ()=>{
 /* ================= MEMO & APPLY (server-computed) ================= */
 async function fetchMemo(){
   const res = await fetch('/api/memo', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
-      tables: state.tables,
       booksBalance: state.booksBalance,
-      bankBalance: state.bankBalance
+      bankBalance: state.bankBalance,
+      tables: state.tables
     })
   });
-  if(!res.ok) throw new Error('فشل الاتصال بالسيرفر');
-  state.memo = await res.json();
+  if(!res.ok) throw new Error('فشل الاتصال بالخادم');
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  state.memo = data;
 }
 
 document.getElementById('btnToMemo').addEventListener('click', async ()=>{
@@ -1134,6 +1256,54 @@ function renderApplyBody(){
   `;
   enableTab('apply');
 }
+
+/* ================= PRINT & PDF ================= */
+function addTempTitle(bodyId, title){
+  const body = document.getElementById(bodyId);
+  const titleEl = document.createElement('h2');
+  titleEl.textContent = title;
+  titleEl.style.cssText = 'color:#14304d;font-size:20px;margin:0 0 16px;border-bottom:3px solid #a67c27;padding-bottom:10px;';
+  body.insertBefore(titleEl, body.firstChild);
+  return titleEl;
+}
+
+function printSection(){
+  window.print();
+}
+
+function downloadPdf(title, bodyId, filename){
+  const body = document.getElementById(bodyId);
+  if(!body || !body.innerHTML.trim()){
+    alert('لا يوجد محتوى لتنزيله بعد — تأكد من إنشاء المذكرة/التطبيق أولاً.');
+    return;
+  }
+  const titleEl = addTempTitle(bodyId, title);
+  const opt = {
+    margin: 10,
+    filename: filename,
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
+  };
+  html2pdf().set(opt).from(body).save().then(()=>{
+    body.removeChild(titleEl);
+  }).catch((err)=>{
+    body.removeChild(titleEl);
+    alert('حدث خطأ أثناء إنشاء PDF: ' + err.message);
+  });
+}
+
+document.getElementById('btnPrintMemo').addEventListener('click', printSection);
+document.getElementById('btnPdfMemo').addEventListener('click', ()=>{
+  downloadPdf('مذكرة التسوية البنكية', 'memoBody', 'مذكرة-التسوية-البنكية.pdf');
+});
+document.getElementById('btnPrintApply').addEventListener('click', printSection);
+document.getElementById('btnPdfApply').addEventListener('click', ()=>{
+  downloadPdf('تطبيق التسوية البنكية', 'applyBody', 'تطبيق-التسوية-البنكية.pdf');
+});
+
+/* استرجاع أي بيانات محفوظة من جلسة سابقة عند فتح الصفحة */
+restoreState();
 </script>
 
 </body>
