@@ -6,6 +6,7 @@ compatibility_date = "2026-09-20"
 directory = "./public"
 binding = "ASSETS"
 run_worker_first = true
+html_handling = "none"
 
 [[kv_namespaces]]
 binding = "CLIENTS"
