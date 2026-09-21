@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول - مطابقة اون لاين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16202a;
+    --paper:#eef1f5;
+    --panel:#ffffff;
+    --line:#ccd3db;
+    --navy:#14304d;
+    --navy-deep:#0d2036;
+    --gold:#a67c27;
+    --gold-deep:#7c5c1c;
+    --danger:#a13a2d;
+    --muted:#5c6b78;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Tajawal',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    max-width:380px;
+    width:100%;
+    overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+  }
+  .head{
+    background:var(--navy);
+    color:#fff;
+    padding:22px 24px;
+    border-bottom:4px solid var(--gold);
+    text-align:center;
+  }
+  .head h1{
+    font-size:18px;
+    font-weight:900;
+    margin:0 0 4px;
+  }
+  .head .sub{
+    font-size:12.5px;
+    color:#c9d6e2;
+  }
+  .body{padding:26px 24px 24px;}
+  label{
+    display:block;
+    font-size:13.5px;
+    font-weight:700;
+    color:var(--navy);
+    margin-bottom:8px;
+  }
+  input{
+    width:100%;
+    padding:12px 14px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-size:15px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input:focus{
+    outline:none;
+    border-color:var(--navy);
+  }
+  button{
+    width:100%;
+    margin-top:16px;
+    padding:13px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    cursor:pointer;
+  }
+  button:hover{background:var(--navy-deep);}
+  button:disabled{opacity:.6;cursor:not-allowed;}
+  .msg{
+    margin-top:14px;
+    font-size:13.5px;
+    text-align:center;
+    min-height:18px;
+  }
+  .msg.error{color:var(--danger);}
+  .msg.ok{color:var(--navy);}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <h1>مطابقة اون لاين</h1>
+      <div class="sub">اتعلم مع Fathy Kasim</div>
+    </div>
+    <div class="body">
+      <form id="loginForm">
+        <label for="code">كود الدخول الخاص بيك</label>
+        <input type="text" id="code" name="code" autocomplete="off" autofocus placeholder="اكتب الكود هنا">
+        <button type="submit" id="submitBtn">دخول</button>
+        <div class="msg" id="msg"></div>
+      </form>
+    </div>
+  </div>
+
+<script>
+const form = document.getElementById('loginForm');
+const msg = document.getElementById('msg');
+const btn = document.getElementById('submitBtn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('code').value.trim();
+  msg.textContent = '';
+  msg.className = 'msg';
+
+  if (!code) {
+    msg.textContent = 'من فضلك اكتب الكود';
+    msg.className = 'msg error';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'جاري الدخول...';
+
+  try {
+    const res = await fetch('/api/client-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.ok) {
+      msg.textContent = 'تم الدخول بنجاح...';
+      msg.className = 'msg ok';
+      window.location.href = '/';
+    } else {
+      msg.textContent = data.error || 'حصل خطأ، حاول تاني';
+      msg.className = 'msg error';
+      btn.disabled = false;
+      btn.textContent = 'دخول';
+    }
+  } catch (err) {
+    msg.textContent = 'حصل خطأ في الاتصال، حاول تاني';
+    msg.className = 'msg error';
+    btn.disabled = false;
+    btn.textContent = 'دخول';
+  }
+});
+</script>
+</body>
+</html>

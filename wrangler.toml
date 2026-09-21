@@ -5,3 +5,11 @@ compatibility_date = "2026-09-20"
 [assets]
 directory = "./public"
 binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "CLIENTS"
+id = "a54646bf6d744a5bb9751dbffad4cfd1"
+
+# ملاحظة: SESSION_SECRET و ADMIN_PASSWORD لازم تتضافوا كـ Secrets من
+# لوحة تحكم Cloudflare (Settings > Variables and Secrets) مش هنا في الملف،
+# لأنهم بيانات حساسة ومينفعش يترفعوا على GitHub.

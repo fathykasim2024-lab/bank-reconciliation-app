@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم - مطابقة اون لاين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16202a;
+    --paper:#eef1f5;
+    --panel:#ffffff;
+    --line:#ccd3db;
+    --navy:#14304d;
+    --navy-deep:#0d2036;
+    --gold:#a67c27;
+    --gold-deep:#7c5c1c;
+    --danger:#a13a2d;
+    --danger-deep:#7c2c22;
+    --ok:#2f6b4f;
+    --muted:#5c6b78;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Tajawal',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:20px 28px;
+    border-bottom:4px solid var(--gold);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  header h1{
+    font-size:19px;
+    font-weight:900;
+    margin:0;
+  }
+  header .sub{
+    font-size:12.5px;
+    color:#c9d6e2;
+    margin-top:2px;
+  }
+  #logoutBtn{
+    background:transparent;
+    border:1px solid rgba(255,255,255,.4);
+    color:#fff;
+    padding:8px 16px;
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  #logoutBtn:hover{background:rgba(255,255,255,.1);}
+  main{
+    max-width:900px;
+    margin:0 auto;
+    padding:24px 20px 60px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:20px;
+  }
+  .panel-head{
+    padding:13px 18px;
+    border-bottom:1px solid var(--line);
+    font-weight:700;
+    font-size:14.5px;
+    color:var(--navy);
+  }
+  .panel-body{padding:18px;}
+
+  /* شاشة تسجيل الدخول */
+  .gate{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .gate-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    max-width:360px;
+    width:100%;
+    overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+  }
+  .gate-head{
+    background:var(--navy);
+    color:#fff;
+    padding:20px 24px;
+    border-bottom:4px solid var(--gold);
+    text-align:center;
+  }
+  .gate-head h2{font-size:16.5px;margin:0;font-weight:900;}
+  .gate-body{padding:24px;}
+
+  label{
+    display:block;
+    font-size:13px;
+    font-weight:700;
+    color:var(--navy);
+    margin-bottom:7px;
+  }
+  input{
+    width:100%;
+    padding:11px 13px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-size:14.5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input:focus{outline:none;border-color:var(--navy);}
+  button.primary{
+    padding:11px 20px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+  }
+  button.primary:hover{background:var(--navy-deep);}
+  button.primary:disabled{opacity:.6;cursor:not-allowed;}
+  .full{width:100%;margin-top:14px;}
+
+  .msg{
+    margin-top:12px;
+    font-size:13px;
+    text-align:center;
+    min-height:16px;
+  }
+  .msg.error{color:var(--danger);}
+  .msg.ok{color:var(--ok);}
+
+  .add-form{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:flex-end;
+  }
+  .add-form .field{flex:1;min-width:160px;}
+  .add-form label{margin-bottom:6px;}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+  }
+  th, td{
+    padding:10px 12px;
+    text-align:right;
+    border-bottom:1px solid var(--line);
+  }
+  th{
+    background:#f4f6f8;
+    color:var(--navy);
+    font-weight:700;
+    font-size:12.5px;
+  }
+  .badge{
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:12px;
+    font-size:11.5px;
+    font-weight:700;
+  }
+  .badge.active{background:#e3f0e8;color:var(--ok);}
+  .badge.inactive{background:#f4e3e0;color:var(--danger);}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .row-actions button{
+    padding:6px 12px;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .row-actions button.toggle:hover{border-color:var(--navy);color:var(--navy);}
+  .row-actions button.del:hover{border-color:var(--danger);color:var(--danger);}
+  .empty{
+    padding:30px;
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .count{
+    font-size:12.5px;
+    color:var(--muted);
+    font-weight:400;
+  }
+  #dashboard{display:none;}
+</style>
+</head>
+<body>
+
+  <!-- شاشة تسجيل دخول الأدمن -->
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <div class="gate-head"><h2>لوحة تحكم الأدمن</h2></div>
+      <div class="gate-body">
+        <form id="adminLoginForm">
+          <label for="password">كلمة السر</label>
+          <input type="password" id="password" autocomplete="off" autofocus>
+          <button type="submit" class="primary full" id="adminLoginBtn">دخول</button>
+          <div class="msg" id="gateMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- لوحة التحكم -->
+  <div id="dashboard">
+    <header>
+      <div>
+        <h1>لوحة تحكم العملاء</h1>
+        <div class="sub">مطابقة اون لاين - اتعلم مع Fathy Kasim</div>
+      </div>
+      <button id="logoutBtn">تسجيل الخروج</button>
+    </header>
+
+    <main>
+      <div class="panel">
+        <div class="panel-head">إضافة عميل جديد</div>
+        <div class="panel-body">
+          <form id="addForm" class="add-form">
+            <div class="field">
+              <label for="newName">اسم العميل</label>
+              <input type="text" id="newName" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="newCode">كود الدخول</label>
+              <input type="text" id="newCode" autocomplete="off">
+            </div>
+            <button type="submit" class="primary">إضافة</button>
+          </form>
+          <div class="msg" id="addMsg"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          العملاء <span class="count" id="clientCount"></span>
+        </div>
+        <div class="panel-body" style="padding:0;">
+          <div id="tableWrap"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+const gate = document.getElementById('gate');
+const dashboard = document.getElementById('dashboard');
+const gateMsg = document.getElementById('gateMsg');
+const adminLoginForm = document.getElementById('adminLoginForm');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
+const addForm = document.getElementById('addForm');
+const addMsg = document.getElementById('addMsg');
+const tableWrap = document.getElementById('tableWrap');
+const clientCount = document.getElementById('clientCount');
+
+function showDashboard() {
+  gate.style.display = 'none';
+  dashboard.style.display = 'block';
+  loadClients();
+}
+
+function showGate() {
+  dashboard.style.display = 'none';
+  gate.style.display = 'flex';
+}
+
+// عند فتح الصفحة: لو فيه جلسة أدمن سارية هيدخل على طول
+(async function init() {
+  try {
+    const res = await fetch('/api/admin/clients');
+    if (res.ok) {
+      showDashboard();
+    } else {
+      showGate();
+    }
+  } catch {
+    showGate();
+  }
+})();
+
+adminLoginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const password = document.getElementById('password').value;
+  gateMsg.textContent = '';
+  gateMsg.className = 'msg';
+  adminLoginBtn.disabled = true;
+  adminLoginBtn.textContent = 'جاري الدخول...';
+
+  try {
+    const res = await fetch('/api/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      showDashboard();
+    } else {
+      gateMsg.textContent = data.error || 'كلمة السر غير صحيحة';
+      gateMsg.className = 'msg error';
+    }
+  } catch {
+    gateMsg.textContent = 'حصل خطأ في الاتصال';
+    gateMsg.className = 'msg error';
+  } finally {
+    adminLoginBtn.disabled = false;
+    adminLoginBtn.textContent = 'دخول';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('/api/admin-logout', { method: 'POST' });
+  document.getElementById('password').value = '';
+  showGate();
+});
+
+addForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('newName').value.trim();
+  const code = document.getElementById('newCode').value.trim();
+  addMsg.textContent = '';
+  addMsg.className = 'msg';
+
+  if (!name || !code) {
+    addMsg.textContent = 'اكتب الاسم والكود';
+    addMsg.className = 'msg error';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/admin/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, code })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      document.getElementById('newName').value = '';
+      document.getElementById('newCode').value = '';
+      addMsg.textContent = 'تمت الإضافة بنجاح';
+      addMsg.className = 'msg ok';
+      loadClients();
+    } else {
+      addMsg.textContent = data.error || 'حصل خطأ';
+      addMsg.className = 'msg error';
+    }
+  } catch {
+    addMsg.textContent = 'حصل خطأ في الاتصال';
+    addMsg.className = 'msg error';
+  }
+});
+
+async function loadClients() {
+  tableWrap.innerHTML = '<div class="empty">جاري التحميل...</div>';
+  try {
+    const res = await fetch('/api/admin/clients');
+    if (!res.ok) { showGate(); return; }
+    const data = await res.json();
+    renderClients(data.clients || []);
+  } catch {
+    tableWrap.innerHTML = '<div class="empty">تعذر تحميل قائمة العملاء</div>';
+  }
+}
+
+function renderClients(clients) {
+  clientCount.textContent = '(' + clients.length + ')';
+
+  if (clients.length === 0) {
+    tableWrap.innerHTML = '<div class="empty">لسه مفيش عملاء مضافين</div>';
+    return;
+  }
+
+  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>';
+  for (const c of clients) {
+    html += '<tr>'
+      + '<td>' + escapeHtml(c.name) + '</td>'
+      + '<td>' + escapeHtml(c.code) + '</td>'
+      + '<td><span class="badge ' + (c.active ? 'active' : 'inactive') + '">' + (c.active ? 'مفعّل' : 'موقوف') + '</span></td>'
+      + '<td><div class="row-actions">'
+      + '<button class="toggle" data-code="' + escapeHtml(c.code) + '">' + (c.active ? 'إيقاف' : 'تفعيل') + '</button>'
+      + '<button class="del" data-code="' + escapeHtml(c.code) + '">حذف</button>'
+      + '</div></td>'
+      + '</tr>';
+  }
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+
+  tableWrap.querySelectorAll('button.toggle').forEach(btn => {
+    btn.addEventListener('click', () => toggleClient(btn.dataset.code));
+  });
+  tableWrap.querySelectorAll('button.del').forEach(btn => {
+    btn.addEventListener('click', () => deleteClient(btn.dataset.code));
+  });
+}
+
+async function toggleClient(code) {
+  try {
+    await fetch('/api/admin/clients/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    loadClients();
+  } catch {
+    alert('حصل خطأ، حاول تاني');
+  }
+}
+
+async function deleteClient(code) {
+  if (!confirm('متأكد إنك عايز تحذف العميل ده؟')) return;
+  try {
+    await fetch('/api/admin/clients/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    loadClients();
+  } catch {
+    alert('حصل خطأ، حاول تاني');
+  }
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
