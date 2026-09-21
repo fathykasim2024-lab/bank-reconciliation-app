@@ -74,16 +74,16 @@ export default {
 
     // ---------- صفحات عامة دايمًا (تسجيل دخول العميل ولوحة الأدمن) ----------
     if (path === '/login' || path === '/login.html') {
-      return env.ASSETS.fetch(new Request(new URL('/login.html', url), request));
+      return env.ASSETS.fetch(new Request(new URL('/login', url), request));
     }
     if (path === '/admin' || path === '/admin.html') {
-      return env.ASSETS.fetch(new Request(new URL('/admin.html', url), request));
+      return env.ASSETS.fetch(new Request(new URL('/admin', url), request));
     }
 
     // ---------- أي حاجة تانية (التطبيق الأساسي والملفات الثابتة) تحتاج جلسة عميل ----------
     const session = await verifySession(getCookie(request, CLIENT_COOKIE), env.SESSION_SECRET);
     if (!session) {
-      return Response.redirect(new URL('/login.html', url), 302);
+      return Response.redirect(new URL('/login', url), 302);
     }
     return env.ASSETS.fetch(request);
   }
