@@ -295,7 +295,7 @@ function showGate() {
 // عند فتح الصفحة: لو فيه جلسة أدمن سارية هيدخل على طول
 (async function init() {
   try {
-    const res = await fetch('/api/admin/clients');
+    const res = await fetch('/api/admin/clients', { cache: 'no-store' });
     if (res.ok) {
       showDashboard();
     } else {
@@ -381,7 +381,7 @@ addForm.addEventListener('submit', async (e) => {
 async function loadClients() {
   tableWrap.innerHTML = '<div class="empty">جاري التحميل...</div>';
   try {
-    const res = await fetch('/api/admin/clients');
+    const res = await fetch('/api/admin/clients', { cache: 'no-store' });
     if (!res.ok) { showGate(); return; }
     const data = await res.json();
     renderClients(data.clients || []);
@@ -434,28 +434,40 @@ function formatDate(ts) {
 
 async function toggleClient(code) {
   try {
-    await fetch('/api/admin/clients/toggle', {
+    const res = await fetch('/api/admin/clients/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
       body: JSON.stringify({ code })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'تعذر تحديث حالة العميل، حاول تاني');
+      return;
+    }
     loadClients();
   } catch {
-    alert('حصل خطأ، حاول تاني');
+    alert('حصل خطأ في الاتصال، حاول تاني');
   }
 }
 
 async function deleteClient(code) {
   if (!confirm('متأكد إنك عايز تحذف العميل ده؟')) return;
   try {
-    await fetch('/api/admin/clients/delete', {
+    const res = await fetch('/api/admin/clients/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
       body: JSON.stringify({ code })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'تعذر حذف العميل، حاول تاني');
+      return;
+    }
     loadClients();
   } catch {
-    alert('حصل خطأ، حاول تاني');
+    alert('حصل خطأ في الاتصال، حاول تاني');
   }
 }
 

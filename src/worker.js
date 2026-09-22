@@ -11,7 +11,11 @@ const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;   // 7 أيام
 function jsonResponse(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...extraHeaders }
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      ...extraHeaders
+    }
   });
 }
 
