@@ -114,6 +114,24 @@ async function handleClientLogin(request, env) {
     return jsonResponse({ error: 'الحساب موقوف حاليًا، تواصل مع الإدارة' }, 403);
   }
 
+  // تسجيل عدد مرات الدخول، تاريخ أول دخول، وسجل الدخول (لحساب آخر 30 يوم لاحقًا)
+  const now = Date.now();
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+  data.loginCount = (data.loginCount || 0) + 1;
+  if (!data.firstLogin) data.firstLogin = now;
+  data.lastLogin = now;
+
+  const timestamps = Array.isArray(data.loginTimestamps) ? data.loginTimestamps : [];
+  timestamps.push(now);
+  // نحتفظ بس بآخر 30 يوم (مع حد أقصى احترازي 1000 قيمة) عشان الملف مايكبرش من غير داعي
+  const cutoff = now - THIRTY_DAYS_MS;
+  data.loginTimestamps = timestamps.filter(t => t >= cutoff).slice(-1000);
+
+  await env.CLIENTS.put(code, JSON.stringify(data), {
+    metadata: { name: data.name, active: data.active !== false }
+  });
+
   const cookieVal = await createSessionCookie({ code, name: data.name }, env.SESSION_SECRET, CLIENT_MAX_AGE);
   return jsonResponse(
     { ok: true, name: data.name },
@@ -146,11 +164,31 @@ async function handleAdminLogin(request, env) {
 async function handleAdminApi(request, env, path, method) {
   if (path === '/api/admin/clients' && method === 'GET') {
     const list = await env.CLIENTS.list();
-    const clients = list.keys.map(k => ({
-      code: k.name,
-      name: (k.metadata && k.metadata.name) || '',
-      active: !(k.metadata && k.metadata.active === false)
+    const now = Date.now();
+    const cutoff = now - 30 * 24 * 60 * 60 * 1000;
+
+    const clients = await Promise.all(list.keys.map(async (k) => {
+      let data = {};
+      try {
+        const raw = await env.CLIENTS.get(k.name);
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {};
+      }
+      const timestamps = Array.isArray(data.loginTimestamps) ? data.loginTimestamps : [];
+      const login30d = timestamps.filter(t => t >= cutoff).length;
+
+      return {
+        code: k.name,
+        name: data.name || (k.metadata && k.metadata.name) || '',
+        active: data.active !== false,
+        loginCount: data.loginCount || 0,
+        firstLogin: data.firstLogin || null,
+        lastLogin: data.lastLogin || null,
+        login30d
+      };
     }));
+
     clients.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
     return jsonResponse({ clients });
   }
@@ -169,7 +207,7 @@ async function handleAdminApi(request, env, path, method) {
     const existing = await env.CLIENTS.get(code);
     if (existing) return jsonResponse({ error: 'الكود ده مستخدم قبل كده لعميل تاني' }, 409);
 
-    const data = { name, active: true, createdAt: Date.now() };
+    const data = { name, active: true, createdAt: Date.now(), loginCount: 0, firstLogin: null, lastLogin: null, loginTimestamps: [] };
     await env.CLIENTS.put(code, JSON.stringify(data), {
       metadata: { name, active: true }
     });

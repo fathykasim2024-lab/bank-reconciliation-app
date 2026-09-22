@@ -163,6 +163,7 @@
     width:100%;
     border-collapse:collapse;
     font-size:13.5px;
+    min-width:760px;
   }
   th, td{
     padding:10px 12px;
@@ -262,7 +263,7 @@
         <div class="panel-head">
           العملاء <span class="count" id="clientCount"></span>
         </div>
-        <div class="panel-body" style="padding:0;">
+        <div class="panel-body" style="padding:0; overflow-x:auto;">
           <div id="tableWrap"></div>
         </div>
       </div>
@@ -397,12 +398,16 @@ function renderClients(clients) {
     return;
   }
 
-  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>أول دخول</th><th>مرات الدخول</th><th>آخر 30 يوم</th><th>آخر دخول</th><th>إجراءات</th></tr></thead><tbody>';
   for (const c of clients) {
     html += '<tr>'
       + '<td>' + escapeHtml(c.name) + '</td>'
       + '<td>' + escapeHtml(c.code) + '</td>'
       + '<td><span class="badge ' + (c.active ? 'active' : 'inactive') + '">' + (c.active ? 'مفعّل' : 'موقوف') + '</span></td>'
+      + '<td>' + formatDate(c.firstLogin) + '</td>'
+      + '<td>' + (c.loginCount || 0) + '</td>'
+      + '<td>' + (c.login30d || 0) + '</td>'
+      + '<td>' + formatDate(c.lastLogin) + '</td>'
       + '<td><div class="row-actions">'
       + '<button class="toggle" data-code="' + escapeHtml(c.code) + '">' + (c.active ? 'إيقاف' : 'تفعيل') + '</button>'
       + '<button class="del" data-code="' + escapeHtml(c.code) + '">حذف</button>'
@@ -418,6 +423,13 @@ function renderClients(clients) {
   tableWrap.querySelectorAll('button.del').forEach(btn => {
     btn.addEventListener('click', () => deleteClient(btn.dataset.code));
   });
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 }
 
 async function toggleClient(code) {
