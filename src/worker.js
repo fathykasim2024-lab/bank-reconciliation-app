@@ -29,6 +29,16 @@ function clearCookieHeader(name) {
   return `${name}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
+// بيجيب الملف من ASSETS وبيمنع أي تخزين مؤقت له (Cache) - سواء في المتصفح
+// أو في شبكة Cloudflare نفسها - عشان محدش يشوف نسخة اتحفظت لزائر تاني
+async function fetchAssetNoStore(env, request) {
+  const assetResponse = await env.ASSETS.fetch(request);
+  const response = new Response(assetResponse.body, assetResponse);
+  response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  response.headers.delete('ETag');
+  return response;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -74,10 +84,10 @@ export default {
 
     // ---------- صفحات عامة دايمًا (تسجيل دخول العميل ولوحة الأدمن) ----------
     if (path === '/login' || path === '/login.html') {
-      return env.ASSETS.fetch(new Request(new URL('/login', url), request));
+      return fetchAssetNoStore(env, new Request(new URL('/login', url), request));
     }
     if (path === '/admin' || path === '/admin.html') {
-      return env.ASSETS.fetch(new Request(new URL('/admin', url), request));
+      return fetchAssetNoStore(env, new Request(new URL('/admin', url), request));
     }
 
     // ---------- أي حاجة تانية (التطبيق الأساسي والملفات الثابتة) تحتاج جلسة عميل ----------
@@ -85,7 +95,7 @@ export default {
     if (!session) {
       return Response.redirect(new URL('/login', url), 302);
     }
-    return env.ASSETS.fetch(request);
+    return fetchAssetNoStore(env, request);
   }
 };
 
