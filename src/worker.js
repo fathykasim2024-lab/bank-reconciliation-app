@@ -5,7 +5,7 @@ import { createSessionCookie, verifySession } from './auth/session.js';
 
 const CLIENT_COOKIE = 'recon_session';
 const ADMIN_COOKIE = 'recon_admin';
-const CLIENT_MAX_AGE = 60 * 60 * 24 * 30; // 30 يوم
+const CLIENT_MAX_AGE = 60 * 60 * 24 * 3;  // 3 أيام (بتخلي "مرات الدخول" مؤشر حقيقي على النشاط ومشاركة الكود)
 const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;   // 7 أيام
 
 function jsonResponse(data, status = 200, extraHeaders = {}) {
