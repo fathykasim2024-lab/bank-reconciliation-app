@@ -43,6 +43,22 @@ async function fetchAssetNoStore(env, request) {
   return response;
 }
 
+// مش بيكفي إن الجلسة موقّعة صح - لازم نتأكد كل مرة إن العميل لسه موجود
+// ومفعّل في KV، عشان لو الأدمن حذف أو أوقف عميل، أي جلسة شغالة بتاعه
+// تتقفل فورًا مش تستنى لحد ما تنتهي بمفردها
+async function isClientStillActive(env, code) {
+  if (!code) return false;
+  const raw = await env.CLIENTS.get(code);
+  if (!raw) return false;
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  return data.active !== false;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -75,8 +91,12 @@ export default {
     // ---------- واجهة المطابقة (محمية بجلسة عميل) ----------
     if (path === '/api/recalc' || path === '/api/review' || path === '/api/memo') {
       const session = await verifySession(getCookie(request, CLIENT_COOKIE), env.SESSION_SECRET);
-      if (!session) {
-        return jsonResponse({ error: 'جلستك منتهية، سجل دخول تاني' }, 401);
+      if (!session || !(await isClientStillActive(env, session.code))) {
+        return jsonResponse(
+          { error: 'جلستك منتهية أو حسابك موقوف، سجل دخول تاني' },
+          401,
+          { 'Set-Cookie': clearCookieHeader(CLIENT_COOKIE) }
+        );
       }
       if (method !== 'POST') {
         return jsonResponse({ error: 'طريقة غير مسموحة' }, 405);
@@ -96,8 +116,14 @@ export default {
 
     // ---------- أي حاجة تانية (التطبيق الأساسي والملفات الثابتة) تحتاج جلسة عميل ----------
     const session = await verifySession(getCookie(request, CLIENT_COOKIE), env.SESSION_SECRET);
-    if (!session) {
-      return Response.redirect(new URL('/login', url), 302);
+    if (!session || !(await isClientStillActive(env, session.code))) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: new URL('/login', url).toString(),
+          'Set-Cookie': clearCookieHeader(CLIENT_COOKIE)
+        }
+      });
     }
     return fetchAssetNoStore(env, request);
   }
