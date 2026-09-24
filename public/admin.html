@@ -211,6 +211,27 @@
     font-weight:400;
   }
   #dashboard{display:none;}
+
+  .filter-bar{
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  .filter-bar input{
+    max-width:320px;
+  }
+  input[type="date"].expiry-input{
+    padding:6px 8px;
+    font-size:12.5px;
+    min-width:135px;
+  }
+  .expiry-cell{display:flex;align-items:center;gap:6px;}
+  .expiry-input.expired{border-color:var(--danger);color:var(--danger);}
+  .expiry-input.soon{border-color:var(--gold);color:var(--gold-deep);}
+  .expiry-save-note{
+    font-size:11px;
+    color:var(--ok);
+    min-width:14px;
+  }
 </style>
 </head>
 <body>
@@ -263,6 +284,10 @@
         <div class="panel-head">
           العملاء <span class="count" id="clientCount"></span>
         </div>
+        <div class="filter-bar">
+          <label for="filterInput" style="margin-bottom:6px;">بحث بالاسم أو الكود</label>
+          <input type="text" id="filterInput" autocomplete="off" placeholder="اكتب اسم العميل أو الكود...">
+        </div>
         <div class="panel-body" style="padding:0; overflow-x:auto;">
           <div id="tableWrap"></div>
         </div>
@@ -280,6 +305,9 @@ const addForm = document.getElementById('addForm');
 const addMsg = document.getElementById('addMsg');
 const tableWrap = document.getElementById('tableWrap');
 const clientCount = document.getElementById('clientCount');
+const filterInput = document.getElementById('filterInput');
+
+let allClients = [];
 
 function showDashboard() {
   gate.style.display = 'none';
@@ -384,21 +412,32 @@ async function loadClients() {
     const res = await fetch('/api/admin/clients', { cache: 'no-store' });
     if (!res.ok) { showGate(); return; }
     const data = await res.json();
-    renderClients(data.clients || []);
+    allClients = data.clients || [];
+    applyFilter();
   } catch {
     tableWrap.innerHTML = '<div class="empty">تعذر تحميل قائمة العملاء</div>';
   }
 }
 
+function applyFilter() {
+  const q = filterInput.value.trim().toLowerCase();
+  const filtered = !q ? allClients : allClients.filter(c =>
+    (c.name || '').toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q)
+  );
+  renderClients(filtered);
+}
+
+filterInput.addEventListener('input', applyFilter);
+
 function renderClients(clients) {
-  clientCount.textContent = '(' + clients.length + ')';
+  clientCount.textContent = '(' + clients.length + ' من ' + allClients.length + ')';
 
   if (clients.length === 0) {
-    tableWrap.innerHTML = '<div class="empty">لسه مفيش عملاء مضافين</div>';
+    tableWrap.innerHTML = '<div class="empty">لا يوجد عملاء مطابقين للبحث</div>';
     return;
   }
 
-  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>أول دخول</th><th>مرات الدخول</th><th>آخر 30 يوم</th><th>آخر دخول</th><th>إجراءات</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>أول دخول</th><th>مرات الدخول</th><th>آخر 30 يوم</th><th>آخر دخول</th><th>تاريخ انتهاء الاشتراك</th><th>إجراءات</th></tr></thead><tbody>';
   for (const c of clients) {
     html += '<tr>'
       + '<td>' + escapeHtml(c.name) + '</td>'
@@ -408,6 +447,10 @@ function renderClients(clients) {
       + '<td>' + (c.loginCount || 0) + '</td>'
       + '<td>' + (c.login30d || 0) + '</td>'
       + '<td>' + formatDate(c.lastLogin) + '</td>'
+      + '<td><div class="expiry-cell">'
+      + '<input type="date" class="expiry-input ' + expiryClass(c.expiryDate) + '" data-code="' + escapeHtml(c.code) + '" value="' + (c.expiryDate || '') + '">'
+      + '<span class="expiry-save-note" data-note-for="' + escapeHtml(c.code) + '"></span>'
+      + '</div></td>'
       + '<td><div class="row-actions">'
       + '<button class="toggle" data-code="' + escapeHtml(c.code) + '">' + (c.active ? 'إيقاف' : 'تفعيل') + '</button>'
       + '<button class="del" data-code="' + escapeHtml(c.code) + '">حذف</button>'
@@ -423,6 +466,47 @@ function renderClients(clients) {
   tableWrap.querySelectorAll('button.del').forEach(btn => {
     btn.addEventListener('click', () => deleteClient(btn.dataset.code));
   });
+  tableWrap.querySelectorAll('input.expiry-input').forEach(inp => {
+    inp.addEventListener('change', () => saveExpiry(inp));
+  });
+}
+
+function expiryClass(expiryDate) {
+  if (!expiryDate) return '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exp = new Date(expiryDate + 'T00:00:00');
+  const diffDays = Math.round((exp - today) / (24 * 60 * 60 * 1000));
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 7) return 'soon';
+  return '';
+}
+
+async function saveExpiry(inp) {
+  const code = inp.dataset.code;
+  const expiryDate = inp.value;
+  const note = tableWrap.querySelector('.expiry-save-note[data-note-for="' + CSS.escape(code) + '"]');
+  inp.className = 'expiry-input ' + expiryClass(expiryDate);
+  try {
+    const res = await fetch('/api/admin/clients/expiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ code, expiryDate })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'تعذر حفظ تاريخ الانتهاء، حاول تاني');
+      return;
+    }
+    const client = allClients.find(c => c.code === code);
+    if (client) client.expiryDate = data.expiryDate || null;
+    if (note) {
+      note.textContent = '✓';
+      setTimeout(() => { note.textContent = ''; }, 1500);
+    }
+  } catch {
+    alert('حصل خطأ في الاتصال، حاول تاني');
+  }
 }
 
 function formatDate(ts) {

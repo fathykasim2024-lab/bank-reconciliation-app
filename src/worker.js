@@ -225,7 +225,8 @@ async function handleAdminApi(request, env, path, method) {
         loginCount: data.loginCount || 0,
         firstLogin: data.firstLogin || null,
         lastLogin: data.lastLogin || null,
-        login30d
+        login30d,
+        expiryDate: data.expiryDate || null
       };
     }));
 
@@ -247,7 +248,7 @@ async function handleAdminApi(request, env, path, method) {
     const existing = await env.CLIENTS.get(code);
     if (existing) return jsonResponse({ error: 'الكود ده مستخدم قبل كده لعميل تاني' }, 409);
 
-    const data = { name, active: true, createdAt: Date.now(), loginCount: 0, firstLogin: null, lastLogin: null, loginTimestamps: [] };
+    const data = { name, active: true, createdAt: Date.now(), loginCount: 0, firstLogin: null, lastLogin: null, loginTimestamps: [], expiryDate: null };
     await env.CLIENTS.put(code, JSON.stringify(data), {
       metadata: { name, active: true }
     });
@@ -271,6 +272,29 @@ async function handleAdminApi(request, env, path, method) {
       metadata: { name: data.name, active: data.active }
     });
     return jsonResponse({ ok: true, active: data.active });
+  }
+
+  if (path === '/api/admin/clients/expiry' && method === 'POST') {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ error: 'بيانات غير صالحة' }, 400);
+    }
+    const code = String(body.code || '').trim();
+    const expiryDate = String(body.expiryDate || '').trim();
+    if (expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) {
+      return jsonResponse({ error: 'صيغة التاريخ غير صحيحة' }, 400);
+    }
+    const raw = await env.CLIENTS.get(code);
+    if (!raw) return jsonResponse({ error: 'العميل غير موجود' }, 404);
+
+    const data = JSON.parse(raw);
+    data.expiryDate = expiryDate || null;
+    await env.CLIENTS.put(code, JSON.stringify(data), {
+      metadata: { name: data.name, active: data.active }
+    });
+    return jsonResponse({ ok: true, expiryDate: data.expiryDate });
   }
 
   if (path === '/api/admin/clients/delete' && method === 'POST') {
