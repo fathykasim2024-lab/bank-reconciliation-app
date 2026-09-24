@@ -226,7 +226,8 @@ async function handleAdminApi(request, env, path, method) {
         firstLogin: data.firstLogin || null,
         lastLogin: data.lastLogin || null,
         login30d,
-        expiryDate: data.expiryDate || null
+        expiryDate: data.expiryDate || null,
+        whatsapp: data.whatsapp || null
       };
     }));
 
@@ -248,7 +249,7 @@ async function handleAdminApi(request, env, path, method) {
     const existing = await env.CLIENTS.get(code);
     if (existing) return jsonResponse({ error: 'الكود ده مستخدم قبل كده لعميل تاني' }, 409);
 
-    const data = { name, active: true, createdAt: Date.now(), loginCount: 0, firstLogin: null, lastLogin: null, loginTimestamps: [], expiryDate: null };
+    const data = { name, active: true, createdAt: Date.now(), loginCount: 0, firstLogin: null, lastLogin: null, loginTimestamps: [], expiryDate: null, whatsapp: null };
     await env.CLIENTS.put(code, JSON.stringify(data), {
       metadata: { name, active: true }
     });
@@ -295,6 +296,26 @@ async function handleAdminApi(request, env, path, method) {
       metadata: { name: data.name, active: data.active }
     });
     return jsonResponse({ ok: true, expiryDate: data.expiryDate });
+  }
+
+  if (path === '/api/admin/clients/whatsapp' && method === 'POST') {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ error: 'بيانات غير صالحة' }, 400);
+    }
+    const code = String(body.code || '').trim();
+    const whatsapp = String(body.whatsapp || '').trim();
+    const raw = await env.CLIENTS.get(code);
+    if (!raw) return jsonResponse({ error: 'العميل غير موجود' }, 404);
+
+    const data = JSON.parse(raw);
+    data.whatsapp = whatsapp || null;
+    await env.CLIENTS.put(code, JSON.stringify(data), {
+      metadata: { name: data.name, active: data.active }
+    });
+    return jsonResponse({ ok: true, whatsapp: data.whatsapp });
   }
 
   if (path === '/api/admin/clients/delete' && method === 'POST') {

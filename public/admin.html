@@ -163,7 +163,7 @@
     width:100%;
     border-collapse:collapse;
     font-size:13.5px;
-    min-width:760px;
+    min-width:1080px;
   }
   th, td{
     padding:10px 12px;
@@ -185,7 +185,7 @@
   }
   .badge.active{background:#e3f0e8;color:var(--ok);}
   .badge.inactive{background:#f4e3e0;color:var(--danger);}
-  .row-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .row-actions{display:flex;gap:6px;flex-wrap:nowrap;white-space:nowrap;}
   .row-actions button{
     padding:6px 12px;
     border:1px solid var(--line);
@@ -196,7 +196,29 @@
     font-weight:700;
     cursor:pointer;
     color:var(--ink);
+    white-space:nowrap;
   }
+  th.col-actions, td.col-actions{min-width:140px;}
+  input.whatsapp-input{
+    padding:6px 8px;
+    font-size:12.5px;
+    min-width:130px;
+  }
+  .whatsapp-cell{display:flex;align-items:center;gap:6px;}
+  .whatsapp-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:26px;
+    height:26px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    color:var(--ok);
+    text-decoration:none;
+    font-size:14px;
+    flex-shrink:0;
+  }
+  .whatsapp-link:hover{border-color:var(--ok);}
   .row-actions button.toggle:hover{border-color:var(--navy);color:var(--navy);}
   .row-actions button.del:hover{border-color:var(--danger);color:var(--danger);}
   .empty{
@@ -437,7 +459,7 @@ function renderClients(clients) {
     return;
   }
 
-  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>أول دخول</th><th>مرات الدخول</th><th>آخر 30 يوم</th><th>آخر دخول</th><th>تاريخ انتهاء الاشتراك</th><th>إجراءات</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>الاسم</th><th>الكود</th><th>الحالة</th><th>أول دخول</th><th>مرات الدخول</th><th>آخر 30 يوم</th><th>آخر دخول</th><th>تاريخ انتهاء الاشتراك</th><th>رقم الواتس</th><th class="col-actions">إجراءات</th></tr></thead><tbody>';
   for (const c of clients) {
     html += '<tr>'
       + '<td>' + escapeHtml(c.name) + '</td>'
@@ -451,7 +473,12 @@ function renderClients(clients) {
       + '<input type="date" class="expiry-input ' + expiryClass(c.expiryDate) + '" data-code="' + escapeHtml(c.code) + '" value="' + (c.expiryDate || '') + '">'
       + '<span class="expiry-save-note" data-note-for="' + escapeHtml(c.code) + '"></span>'
       + '</div></td>'
-      + '<td><div class="row-actions">'
+      + '<td><div class="whatsapp-cell">'
+      + '<input type="tel" class="whatsapp-input" data-code="' + escapeHtml(c.code) + '" placeholder="مثال 201001234567" value="' + escapeHtml(c.whatsapp || '') + '">'
+      + (c.whatsapp ? '<a class="whatsapp-link" href="https://wa.me/' + escapeHtml(c.whatsapp.replace(/\D/g, '')) + '" target="_blank" rel="noopener" title="فتح واتساب">↗</a>' : '')
+      + '<span class="whatsapp-save-note" data-wnote-for="' + escapeHtml(c.code) + '"></span>'
+      + '</div></td>'
+      + '<td class="col-actions"><div class="row-actions">'
       + '<button class="toggle" data-code="' + escapeHtml(c.code) + '">' + (c.active ? 'إيقاف' : 'تفعيل') + '</button>'
       + '<button class="del" data-code="' + escapeHtml(c.code) + '">حذف</button>'
       + '</div></td>'
@@ -468,6 +495,9 @@ function renderClients(clients) {
   });
   tableWrap.querySelectorAll('input.expiry-input').forEach(inp => {
     inp.addEventListener('change', () => saveExpiry(inp));
+  });
+  tableWrap.querySelectorAll('input.whatsapp-input').forEach(inp => {
+    inp.addEventListener('change', () => saveWhatsapp(inp));
   });
 }
 
@@ -550,6 +580,34 @@ async function deleteClient(code) {
       return;
     }
     loadClients();
+  } catch {
+    alert('حصل خطأ في الاتصال، حاول تاني');
+  }
+}
+
+async function saveWhatsapp(inp) {
+  const code = inp.dataset.code;
+  const whatsapp = inp.value.trim();
+  const note = tableWrap.querySelector('.whatsapp-save-note[data-wnote-for="' + CSS.escape(code) + '"]');
+  try {
+    const res = await fetch('/api/admin/clients/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ code, whatsapp })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'تعذر حفظ رقم الواتس، حاول تاني');
+      return;
+    }
+    const client = allClients.find(c => c.code === code);
+    if (client) client.whatsapp = data.whatsapp || null;
+    if (note) {
+      note.textContent = '✓';
+      setTimeout(() => { note.textContent = ''; }, 1500);
+    }
+    applyFilter();
   } catch {
     alert('حصل خطأ في الاتصال، حاول تاني');
   }
