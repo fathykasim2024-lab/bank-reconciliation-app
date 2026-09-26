@@ -233,6 +233,56 @@
     font-size:13.5px;
   }
   .table-scroll{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);}
+  .diff-subnav{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px;
+  }
+  .diff-subnav-btn{
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    padding:9px 14px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:#fbfcfd;
+    color:var(--navy);
+    cursor:pointer;
+  }
+  .diff-subnav-btn.active{
+    background:var(--navy);
+    color:#fff;
+    border-color:var(--navy);
+  }
+  .diff-subnav-btn.has-diff:not(.active){
+    border-color:var(--danger);
+    color:var(--danger-deep);
+  }
+  .diff-pager{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:20px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .diff-pager .pager-btn{
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    padding:9px 16px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--navy);
+    cursor:pointer;
+  }
+  .diff-pager .pager-btn:hover:not(:disabled){background:#f5f6f8;}
+  .diff-pager .pager-btn:disabled{color:var(--muted);cursor:not-allowed;opacity:.5;}
+  .diff-pager .pager-status{font-size:13px;font-weight:700;color:var(--muted);}
   tr.filter-row th{
     padding:5px 8px;
     background:#fbfcfd;
@@ -964,12 +1014,31 @@ function roundKey(n){
 function renderDifferenceTables(){
   const container = document.getElementById('diffTables');
   container.innerHTML = '';
-  ['t1','t2','t3','t4'].forEach(key=>{
+
+  const keys = ['t1','t2','t3','t4'];
+
+  const subnav = document.createElement('div');
+  subnav.className = 'diff-subnav';
+  container.appendChild(subnav);
+
+  const host = document.createElement('div');
+  container.appendChild(host);
+
+  const pager = document.createElement('div');
+  pager.className = 'diff-pager';
+  pager.innerHTML = `
+    <button class="pager-btn" id="diffPrev">▶ السابق</button>
+    <span class="pager-status" id="diffStatus"></span>
+    <button class="pager-btn" id="diffNext">التالي ◀</button>
+  `;
+  container.appendChild(pager);
+
+  const wraps = keys.map(key=>{
     const meta = TABLE_META[key];
     const rows = state.tables[key];
 
     const wrap = document.createElement('div');
-    wrap.style.marginBottom = '28px';
+    wrap.className = 'diff-table-slot';
     wrap.innerHTML = `<div class="table-title">${meta.title} <span style="color:var(--muted);font-weight:400;">(${rows.length} فرق)</span></div>
       <div class="table-desc">${meta.desc}</div>`;
 
@@ -1039,8 +1108,43 @@ function renderDifferenceTables(){
       scroll.appendChild(table);
       wrap.appendChild(scroll);
     }
-    container.appendChild(wrap);
+    host.appendChild(wrap);
+    return wrap;
   });
+
+  const subBtns = keys.map((key,i)=>{
+    const meta = TABLE_META[key];
+    const rows = state.tables[key];
+    const btn = document.createElement('button');
+    btn.className = 'diff-subnav-btn' + (rows.length>0 ? ' has-diff' : '');
+    btn.textContent = (i+1) + '. ' + meta.title + ' (' + rows.length + ')';
+    btn.addEventListener('click', ()=> setActiveDiffTable(i));
+    subnav.appendChild(btn);
+    return btn;
+  });
+
+  const diffPrevBtn = document.getElementById('diffPrev');
+  const diffNextBtn = document.getElementById('diffNext');
+  const diffStatus = document.getElementById('diffStatus');
+
+  function setActiveDiffTable(i){
+    wraps.forEach((w,idx)=>{ w.style.display = (idx===i) ? '' : 'none'; });
+    subBtns.forEach((b,idx)=> b.classList.toggle('active', idx===i));
+    diffStatus.textContent = 'جدول ' + (i+1) + ' من ' + keys.length;
+    diffPrevBtn.disabled = (i===0);
+    diffNextBtn.disabled = (i===keys.length-1);
+    state.activeDiffTableIndex = i;
+    host.scrollIntoView({block:'nearest'});
+  }
+
+  diffPrevBtn.addEventListener('click', ()=>{
+    setActiveDiffTable(Math.max(0, (state.activeDiffTableIndex||0) - 1));
+  });
+  diffNextBtn.addEventListener('click', ()=>{
+    setActiveDiffTable(Math.min(keys.length-1, (state.activeDiffTableIndex||0) + 1));
+  });
+
+  setActiveDiffTable(0);
 }
 
 document.getElementById('btnProceed').addEventListener('click', ()=>{
