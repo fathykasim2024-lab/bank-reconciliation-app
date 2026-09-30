@@ -213,8 +213,8 @@ async function handleAdminApi(request, env, path, method) {
     const list = await env.CLIENTS.list();
     const now = Date.now();
     const cutoff = now - 30 * 24 * 60 * 60 * 1000;
-    const cutoff7d = now - 7 * 24 * 60 * 60 * 1000;
-    const SUSPICIOUS_IP_THRESHOLD = 3; // عدد الأماكن المختلفة اللي لو اتعدت في 7 أيام يبقى فيه احتمال مشاركة كود
+    const cutoffWindow = now - 3 * 24 * 60 * 60 * 1000; // نافذة كشف المشاركة: آخر 3 أيام
+    const SUSPICIOUS_IP_THRESHOLD = 4; // أكتر من 3 أجهزة/أماكن مختلفة في النافذة دي = مشبوه
 
     const clients = await Promise.all(list.keys.map(async (k) => {
       let data = {};
@@ -228,8 +228,8 @@ async function handleAdminApi(request, env, path, method) {
       const login30d = timestamps.filter(t => t >= cutoff).length;
 
       const ipEvents = Array.isArray(data.loginIPs) ? data.loginIPs : [];
-      const recentIPs = ipEvents.filter(e => e && e.t >= cutoff7d && e.ip && e.ip !== 'unknown');
-      const distinctIPs7d = new Set(recentIPs.map(e => e.ip)).size;
+      const recentIPs = ipEvents.filter(e => e && e.t >= cutoffWindow && e.ip && e.ip !== 'unknown');
+      const distinctIPs3d = new Set(recentIPs.map(e => e.ip)).size;
 
       return {
         code: k.name,
@@ -241,8 +241,8 @@ async function handleAdminApi(request, env, path, method) {
         login30d,
         expiryDate: data.expiryDate || null,
         whatsapp: data.whatsapp || null,
-        distinctIPs7d,
-        suspicious: distinctIPs7d >= SUSPICIOUS_IP_THRESHOLD
+        distinctIPs3d,
+        suspicious: distinctIPs3d >= SUSPICIOUS_IP_THRESHOLD
       };
     }));
 

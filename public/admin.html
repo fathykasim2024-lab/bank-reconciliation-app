@@ -477,7 +477,7 @@ function renderClients(clients) {
   for (const c of clients) {
     html += '<tr>'
       + '<td>' + escapeHtml(c.name) + '</td>'
-      + '<td>' + escapeHtml(c.code) + (c.suspicious ? '<span class="suspicious-flag" title="دخل من ' + c.distinctIPs7d + ' أماكن مختلفة خلال آخر 7 أيام - احتمال مشاركة الكود">⚠️ ' + c.distinctIPs7d + ' أماكن</span>' : '') + '</td>'
+      + '<td>' + escapeHtml(c.code) + (c.suspicious ? '<span class="suspicious-flag" title="دخل من ' + c.distinctIPs3d + ' أجهزة/أماكن مختلفة خلال آخر 3 أيام - احتمال مشاركة الكود">⚠️ ' + c.distinctIPs3d + ' أماكن</span>' : '') + '</td>'
       + '<td><span class="badge ' + (c.active ? 'active' : 'inactive') + '">' + (c.active ? 'مفعّل' : 'موقوف') + '</span></td>'
       + '<td>' + formatDate(c.firstLogin) + '</td>'
       + '<td>' + (c.loginCount || 0) + '</td>'
