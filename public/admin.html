@@ -247,6 +247,20 @@
     min-width:135px;
   }
   .expiry-cell{display:flex;align-items:center;gap:6px;}
+  .suspicious-flag{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    margin-inline-start:6px;
+    padding:2px 7px;
+    border-radius:999px;
+    background:#fdecea;
+    color:var(--danger);
+    font-size:11px;
+    font-weight:700;
+    cursor:help;
+    white-space:nowrap;
+  }
   .expiry-input.expired{border-color:var(--danger);color:var(--danger);}
   .expiry-input.soon{border-color:var(--gold);color:var(--gold-deep);}
   .expiry-save-note{
@@ -463,7 +477,7 @@ function renderClients(clients) {
   for (const c of clients) {
     html += '<tr>'
       + '<td>' + escapeHtml(c.name) + '</td>'
-      + '<td>' + escapeHtml(c.code) + '</td>'
+      + '<td>' + escapeHtml(c.code) + (c.suspicious ? '<span class="suspicious-flag" title="دخل من ' + c.distinctIPs7d + ' أماكن مختلفة خلال آخر 7 أيام - احتمال مشاركة الكود">⚠️ ' + c.distinctIPs7d + ' أماكن</span>' : '') + '</td>'
       + '<td><span class="badge ' + (c.active ? 'active' : 'inactive') + '">' + (c.active ? 'مفعّل' : 'موقوف') + '</span></td>'
       + '<td>' + formatDate(c.firstLogin) + '</td>'
       + '<td>' + (c.loginCount || 0) + '</td>'

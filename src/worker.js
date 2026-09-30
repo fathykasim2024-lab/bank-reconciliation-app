@@ -154,7 +154,7 @@ async function handleClientLogin(request, env) {
     return jsonResponse({ error: 'الحساب موقوف حاليًا، تواصل مع الإدارة' }, 403);
   }
 
-  // تسجيل عدد مرات الدخول، تاريخ أول دخول، وسجل الدخول (لحساب آخر 30 يوم لاحقًا)
+  // تسجيل عدد مرات الدخول، تاريخ أول دخول، وسجل الدخول (لحساب آخر 30 يوم واكتشاف مشاركة الكود لاحقًا)
   const now = Date.now();
   const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -167,6 +167,13 @@ async function handleClientLogin(request, env) {
   // نحتفظ بس بآخر 30 يوم (مع حد أقصى احترازي 1000 قيمة) عشان الملف مايكبرش من غير داعي
   const cutoff = now - THIRTY_DAYS_MS;
   data.loginTimestamps = timestamps.filter(t => t >= cutoff).slice(-1000);
+
+  // نسجل الـIP مع كل دخول عشان نكشف لو نفس الكود بيتستخدم من أماكن مختلفة كتير
+  // (مؤشر على مشاركة الكود مع أشخاص مش مشتركين)
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const ipEvents = Array.isArray(data.loginIPs) ? data.loginIPs : [];
+  ipEvents.push({ t: now, ip });
+  data.loginIPs = ipEvents.filter(e => e && e.t >= cutoff).slice(-1000);
 
   await env.CLIENTS.put(code, JSON.stringify(data), {
     metadata: { name: data.name, active: data.active !== false }
@@ -206,6 +213,8 @@ async function handleAdminApi(request, env, path, method) {
     const list = await env.CLIENTS.list();
     const now = Date.now();
     const cutoff = now - 30 * 24 * 60 * 60 * 1000;
+    const cutoff7d = now - 7 * 24 * 60 * 60 * 1000;
+    const SUSPICIOUS_IP_THRESHOLD = 3; // عدد الأماكن المختلفة اللي لو اتعدت في 7 أيام يبقى فيه احتمال مشاركة كود
 
     const clients = await Promise.all(list.keys.map(async (k) => {
       let data = {};
@@ -218,6 +227,10 @@ async function handleAdminApi(request, env, path, method) {
       const timestamps = Array.isArray(data.loginTimestamps) ? data.loginTimestamps : [];
       const login30d = timestamps.filter(t => t >= cutoff).length;
 
+      const ipEvents = Array.isArray(data.loginIPs) ? data.loginIPs : [];
+      const recentIPs = ipEvents.filter(e => e && e.t >= cutoff7d && e.ip && e.ip !== 'unknown');
+      const distinctIPs7d = new Set(recentIPs.map(e => e.ip)).size;
+
       return {
         code: k.name,
         name: data.name || (k.metadata && k.metadata.name) || '',
@@ -227,7 +240,9 @@ async function handleAdminApi(request, env, path, method) {
         lastLogin: data.lastLogin || null,
         login30d,
         expiryDate: data.expiryDate || null,
-        whatsapp: data.whatsapp || null
+        whatsapp: data.whatsapp || null,
+        distinctIPs7d,
+        suspicious: distinctIPs7d >= SUSPICIOUS_IP_THRESHOLD
       };
     }));
 
