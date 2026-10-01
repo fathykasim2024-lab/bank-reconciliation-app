@@ -325,21 +325,47 @@
   .badge.books{background:#e3ecf5;color:var(--navy);}
   .badge.bank{background:#f6ebd9;color:var(--gold-deep);}
   .memo-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee;font-size:14px;}
+  .memo-header{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:16px;
+    padding-bottom:16px;
+    border-bottom:2px solid var(--line);
+  }
+  .memo-header-field{display:flex;flex-direction:column;gap:5px;flex:1 1 180px;}
+  .memo-header-field label{font-size:12px;color:var(--muted);font-weight:700;}
+  .memo-header-field input{
+    padding:8px 10px;
+    font-family:'Tajawal',sans-serif;
+    font-size:13.5px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+  }
+  @media print{
+    .memo-header-field input{border:none;border-bottom:1px solid #999;border-radius:0;padding:4px 2px;}
+  }
   .memo-row .lbl{color:var(--muted);}
   .memo-row .amt{font-weight:700;}
   .memo-row.total{border-top:2px solid var(--navy);border-bottom:none;padding-top:12px;margin-top:6px;}
   .memo-row.total .amt{font-size:16px;color:var(--navy);}
   .quad-grid{
     display:grid;
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:1fr;
     gap:16px;
   }
-  @media (max-width:900px){.quad-grid{grid-template-columns:1fr;}}
   .quad{
     border:1px solid var(--line);
     border-radius:var(--radius);
     overflow:hidden;
   }
+  /* جدول كل ربع ياخد عرض الصفحة بالكامل: عمودي التاريخ والمبلغ بعرض ثابت صغير،
+     وعمود البيان ياخد الباقي ويلف النص بدل ما يدفع الأعمدة بره حدود الصندوق */
+  .quad .table-scroll{max-height:none;overflow:visible;}
+  .quad table{table-layout:fixed;width:100%;}
+  .quad table th:nth-child(1), .quad table td:nth-child(1){width:110px;}
+  .quad table th:nth-child(3), .quad table td:nth-child(3){width:130px;}
+  .quad table th:nth-child(2), .quad table td:nth-child(2){white-space:normal;word-break:break-word;}
   .quad-head{
     padding:10px 14px;
     font-weight:700;
@@ -655,7 +681,8 @@ const state = {
   bankEntries: [],
   booksBalance: 0,
   bankBalance: 0,
-  tables: { t1: [], t2: [], t3: [], t4: [] } // each item: {date, ref, desc, amount, selected:bool}
+  tables: { t1: [], t2: [], t3: [], t4: [] }, // each item: {date, ref, desc, amount, selected:bool}
+  memoHeader: { accountName: '', fromDate: '', toDate: '' }
 };
 
 /* ================= LOCAL PERSISTENCE (localStorage) ================= */
@@ -673,6 +700,7 @@ function saveState(){
       booksBalance: state.booksBalance,
       bankBalance: state.bankBalance,
       tables: state.tables,
+      memoHeader: state.memoHeader,
       savedAt: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -710,6 +738,7 @@ function restoreState(){
   state.booksBalance = data.booksBalance;
   state.bankBalance = data.bankBalance;
   state.tables = data.tables;
+  state.memoHeader = data.memoHeader || { accountName: '', fromDate: '', toDate: '' };
 
   const savedDate = data.savedAt ? new Date(data.savedAt).toLocaleString('ar-EG') : '';
   document.getElementById('statusBooks').textContent = 'تم استرجاع '+state.booksEntries.length+' حركة محفوظة ✓';
@@ -961,6 +990,10 @@ document.getElementById('fileBank').addEventListener('change', function(e){
 
 function fmtMoney(n){
   return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function escapeAttr(s){
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function recalcAll(){
@@ -1289,8 +1322,23 @@ document.getElementById('btnToMemo').addEventListener('click', async ()=>{
 function renderMemoBody(){
   const m = state.memo;
   const diff = m.bankBalance + m.booksAfter;
+  const h = state.memoHeader || (state.memoHeader = { accountName:'', fromDate:'', toDate:'' });
   const body = document.getElementById('memoBody');
   body.innerHTML = `
+    <div class="memo-header">
+      <div class="memo-header-field">
+        <label>اسم الحساب</label>
+        <input type="text" id="memoAccountName" placeholder="مثال: البنك الأهلي - حساب جاري" value="${escapeAttr(h.accountName)}">
+      </div>
+      <div class="memo-header-field">
+        <label>الفترة من</label>
+        <input type="date" id="memoFromDate" value="${escapeAttr(h.fromDate)}">
+      </div>
+      <div class="memo-header-field">
+        <label>إلى</label>
+        <input type="date" id="memoToDate" value="${escapeAttr(h.toDate)}">
+      </div>
+    </div>
     <div class="memo-row"><span class="lbl">رصيد الدفاتر قبل التسوية</span><span class="amt">${fmtMoney(m.booksBefore)}</span></div>
     <div class="memo-row"><span class="lbl">(-) ${TABLE_META.t1.action} — ${TABLE_META.t1.desc}</span><span class="amt">${fmtMoney(m.e4)}</span></div>
     <div class="memo-row"><span class="lbl">(+) ${TABLE_META.t2.action} — ${TABLE_META.t2.desc}</span><span class="amt">${fmtMoney(m.e5)}</span></div>
@@ -1305,6 +1353,18 @@ function renderMemoBody(){
       ملحوظة: كشف البنك يُسجَّل عادةً بعكس اتجاه دفاتر الشركة لنفس الحركة (الإيداع دائن عند البنك ومدين عند الشركة)، لذلك تُعتبر التسوية مطابقة عندما يكون مجموع الرصيدين صفرًا.
     </div>
   `;
+  document.getElementById('memoAccountName').addEventListener('input', function(){
+    state.memoHeader.accountName = this.value;
+    saveState();
+  });
+  document.getElementById('memoFromDate').addEventListener('input', function(){
+    state.memoHeader.fromDate = this.value;
+    saveState();
+  });
+  document.getElementById('memoToDate').addEventListener('input', function(){
+    state.memoHeader.toDate = this.value;
+    saveState();
+  });
   enableTab('memo');
 }
 
