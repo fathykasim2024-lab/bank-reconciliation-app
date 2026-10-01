@@ -233,6 +233,16 @@
     font-size:13.5px;
   }
   .table-scroll{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);}
+  /* صفحة بيان الاختلافات: الجدول ياخد ارتفاعه الطبيعي بالكامل وتتحرك الصفحة نفسها،
+     بدل مربع صغير بمسطرة داخلية - وتقليل المسافات الفاضية عشان يبان سطور أكتر */
+  #diffTables .table-scroll{max-height:none;overflow:visible;}
+  #diffTables{padding:14px 16px;}
+  #diffTables .table-title{margin-bottom:2px;font-size:13.5px;}
+  #diffTables .table-desc{margin-bottom:8px;}
+  #diffTables .diff-subnav{margin-bottom:12px;padding-bottom:10px;}
+  #diffTables thead th{padding:7px 10px;}
+  #diffTables tbody td{padding:6px 10px;}
+  #diffTables tr.filter-row th{top:33px;}
   .diff-subnav{
     display:flex;
     gap:8px;
