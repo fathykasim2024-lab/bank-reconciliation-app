@@ -1082,7 +1082,10 @@ function renderDifferenceTables(){
           if(filters.date && !formatDate(row.date).includes(filters.date)) return false;
           if(filters.ref && !String(row.ref||'').includes(filters.ref)) return false;
           if(filters.desc && !String(row.desc||'').includes(filters.desc)) return false;
-          if(filters.amount && !String(row.amount).includes(filters.amount)) return false;
+          if(filters.amount){
+            const target = Number(String(filters.amount).replace(/,/g, '').trim());
+            if(!Number.isNaN(target) && Math.abs(row.amount - target) > 0.004) return false;
+          }
           if(filters.ownCount!==undefined && filters.ownCount!=='' && String(row.ownCount)!==filters.ownCount) return false;
           if(filters.cpCount!==undefined && filters.cpCount!=='' && String(row.cpCount)!==filters.cpCount) return false;
           return true;
