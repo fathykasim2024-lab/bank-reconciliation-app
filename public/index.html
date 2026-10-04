@@ -459,7 +459,7 @@
     main{padding:0;max-width:none;}
     .table-scroll{max-height:none !important;overflow:visible !important;}
     /* منع قطع صف الجدول أو سطر المذكرة بين صفحتين */
-    tr, .memo-row{page-break-inside:avoid;break-inside:avoid;}
+    tr, .memo-row, .quad-summary{page-break-inside:avoid;break-inside:avoid;}
     /* كل جدول في تطبيق التسوية (عدا الأول) يبدأ في صفحة جديدة بدل ما ياخد جزء من الصفحة السابقة */
     .quad-break{page-break-before:always;break-before:page;}
   }
@@ -1490,7 +1490,7 @@ function downloadPdf(title, bodyId, filename){
     html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
     jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
     // منع قطع صف الجدول بين صفحتين، وبدء كل جدول (عدا الأول) في صفحة جديدة
-    pagebreak: { mode: ['css','legacy'], avoid: ['tr', '.memo-row'], before: '.quad-break' }
+    pagebreak: { mode: ['css','legacy'], avoid: ['tr', '.memo-row', '.quad-summary'], before: '.quad-break' }
   };
   html2pdf().set(opt).from(body).save().then(()=>{
     body.removeChild(titleEl);
