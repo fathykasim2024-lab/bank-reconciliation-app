@@ -381,6 +381,16 @@
     background:#fafbfc;
     border-bottom:1px solid var(--line);
   }
+  .quad-summary{
+    display:flex;
+    justify-content:space-between;
+    padding:9px 14px;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--navy);
+    background:#fafbfc;
+    border-top:1px solid var(--line);
+  }
   .note{
     font-size:12.5px;
     color:var(--muted);
@@ -448,6 +458,10 @@
     .panel-head button{display:none !important;}
     main{padding:0;max-width:none;}
     .table-scroll{max-height:none !important;overflow:visible !important;}
+    /* منع قطع صف الجدول أو سطر المذكرة بين صفحتين */
+    tr, .memo-row{page-break-inside:avoid;break-inside:avoid;}
+    /* كل جدول في تطبيق التسوية (عدا الأول) يبدأ في صفحة جديدة بدل ما ياخد جزء من الصفحة السابقة */
+    .quad-break{page-break-before:always;break-before:page;}
   }
 </style>
 </head>
@@ -647,6 +661,7 @@
         <div style="display:flex;gap:8px;">
           <button class="action" id="btnPrintMemo">🖨️ طباعة</button>
           <button class="action gold" id="btnPdfMemo">⬇️ تنزيل PDF</button>
+          <button class="action" id="btnExcelMemo">📊 تصدير إكسل</button>
         </div>
       </div>
       <div class="panel-body" id="memoBody"></div>
@@ -664,6 +679,7 @@
         <div style="display:flex;gap:8px;">
           <button class="action" id="btnPrintApply">🖨️ طباعة</button>
           <button class="action gold" id="btnPdfApply">⬇️ تنزيل PDF</button>
+          <button class="action" id="btnExcelApply">📊 تصدير إكسل</button>
         </div>
       </div>
       <div class="panel-body" id="applyBody"></div>
@@ -1378,6 +1394,10 @@ document.getElementById('btnToApply').addEventListener('click', async ()=>{
   }
 });
 
+function quadTotal(rows){
+  return rows.reduce((s,r)=> s + (Number(r.amount)||0), 0);
+}
+
 function renderApplyBody(){
   const m = state.memo;
   const {del1, del3, add2, add4} = m.apply;
@@ -1392,6 +1412,10 @@ function renderApplyBody(){
     return html;
   }
 
+  function quadSummary(rows){
+    return `<div class="quad-summary"><span>عدد الحركات: ${rows.length}</span><span>إجمالي القيمة: ${fmtMoney(quadTotal(rows))}</span></div>`;
+  }
+
   const body = document.getElementById('applyBody');
   body.innerHTML = `
     <div class="quad-grid">
@@ -1399,21 +1423,25 @@ function renderApplyBody(){
         <div class="quad-head del">قيود تُحذف من الدفاتر — مدين</div>
         <div class="quad-sub">${TABLE_META.t1.desc}</div>
         ${quadTable(del1, 'لا يوجد قيود')}
+        ${quadSummary(del1)}
       </div>
-      <div class="quad">
+      <div class="quad quad-break">
         <div class="quad-head add">قيود تُضاف إلى الدفاتر — مدين</div>
         <div class="quad-sub">${TABLE_META.t2.desc}</div>
         ${quadTable(add2, 'لا يوجد قيود')}
+        ${quadSummary(add2)}
       </div>
-      <div class="quad">
+      <div class="quad quad-break">
         <div class="quad-head del">قيود تُحذف من الدفاتر — دائن</div>
         <div class="quad-sub">${TABLE_META.t3.desc}</div>
         ${quadTable(del3, 'لا يوجد قيود')}
+        ${quadSummary(del3)}
       </div>
-      <div class="quad">
+      <div class="quad quad-break">
         <div class="quad-head add">قيود تُضاف إلى الدفاتر — دائن</div>
         <div class="quad-sub">${TABLE_META.t4.desc}</div>
         ${quadTable(add4, 'لا يوجد قيود')}
+        ${quadSummary(add4)}
       </div>
     </div>
     <div class="summary-cards" style="margin-top:20px;">
@@ -1460,7 +1488,9 @@ function downloadPdf(title, bodyId, filename){
     filename: filename,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    // منع قطع صف الجدول بين صفحتين، وبدء كل جدول (عدا الأول) في صفحة جديدة
+    pagebreak: { mode: ['css','legacy'], avoid: ['tr', '.memo-row'], before: '.quad-break' }
   };
   html2pdf().set(opt).from(body).save().then(()=>{
     body.removeChild(titleEl);
@@ -1478,6 +1508,75 @@ document.getElementById('btnPrintApply').addEventListener('click', printSection)
 document.getElementById('btnPdfApply').addEventListener('click', ()=>{
   downloadPdf('تطبيق التسوية البنكية', 'applyBody', 'تطبيق-التسوية-البنكية.pdf');
 });
+
+/* ================= تصدير إكسل ================= */
+function exportMemoExcel(){
+  const m = state.memo;
+  if(!m){
+    alert('لا يوجد محتوى لتصديره بعد — تأكد من إنشاء المذكرة أولاً.');
+    return;
+  }
+  const h = state.memoHeader || {};
+  const rows = [
+    ['اسم الحساب', h.accountName || ''],
+    ['الفترة من', h.fromDate || ''],
+    ['الفترة إلى', h.toDate || ''],
+    [],
+    ['البيان', 'المبلغ'],
+    ['رصيد الدفاتر قبل التسوية', m.booksBefore],
+    [`(-) ${TABLE_META.t1.action} — ${TABLE_META.t1.desc}`, m.e4],
+    [`(+) ${TABLE_META.t2.action} — ${TABLE_META.t2.desc}`, m.e5],
+    [`(+) ${TABLE_META.t3.action} — ${TABLE_META.t3.desc}`, m.e6],
+    [`(-) ${TABLE_META.t4.action} — ${TABLE_META.t4.desc}`, m.e7],
+    ['رصيد الدفاتر بعد التسوية', m.booksAfter],
+    ['الرصيد طبقًا لكشف البنك أو الحساب المقابل', m.bankBalance],
+    [],
+    ['حالة المطابقة', m.matched ? 'مطابق' : 'غير مطابق']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:45},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'مذكرة التسوية');
+  XLSX.writeFile(wb, 'مذكرة-التسوية-البنكية.xlsx');
+}
+
+function exportApplyExcel(){
+  const m = state.memo;
+  if(!m){
+    alert('لا يوجد محتوى لتصديره بعد — تأكد من الانتقال إلى تطبيق التسوية أولاً.');
+    return;
+  }
+  const {del1, del3, add2, add4} = m.apply;
+  const sheets = [
+    { name: 'حذف من الدفاتر - مدين', rows: del1 },
+    { name: 'إضافة إلى الدفاتر - مدين', rows: add2 },
+    { name: 'حذف من الدفاتر - دائن', rows: del3 },
+    { name: 'إضافة إلى الدفاتر - دائن', rows: add4 }
+  ];
+  const wb = XLSX.utils.book_new();
+  sheets.forEach(sec=>{
+    const aoa = [['التاريخ', 'بيان', 'المبلغ']];
+    sec.rows.forEach(r=> aoa.push([formatDate(r.date), r.desc||'', r.amount]));
+    aoa.push([]);
+    aoa.push(['عدد الحركات', sec.rows.length]);
+    aoa.push(['إجمالي القيمة', quadTotal(sec.rows)]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:14},{wch:55},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, ws, sec.name.slice(0,31));
+  });
+  const summaryWs = XLSX.utils.aoa_to_sheet([
+    ['البند', 'القيمة'],
+    ['رصيد الدفاتر بعد التسوية', m.booksAfter],
+    ['رصيد كشف البنك', m.bankBalance],
+    ['حالة المطابقة النهائية', m.matched ? 'مطابق' : 'غير مطابق']
+  ]);
+  summaryWs['!cols'] = [{wch:30},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, summaryWs, 'ملخص');
+  XLSX.writeFile(wb, 'تطبيق-التسوية-البنكية.xlsx');
+}
+
+document.getElementById('btnExcelMemo').addEventListener('click', exportMemoExcel);
+document.getElementById('btnExcelApply').addEventListener('click', exportApplyExcel);
 
 /* استرجاع أي بيانات محفوظة من جلسة سابقة عند فتح الصفحة */
 restoreState();
