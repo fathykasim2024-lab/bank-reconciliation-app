@@ -1483,6 +1483,11 @@ function downloadPdf(title, bodyId, filename){
     return;
   }
   const titleEl = addTempTitle(bodyId, title);
+  // فاصل غير مرئي آخر المحتوى: بيمنع قطع آخر سطر (زي إجمالي آخر جدول) عند حدود
+  // الصفحة الأخيرة بالظبط - مشكلة معروفة لما يكون طول المحتوى قريب جدًا من حافة الصفحة
+  const spacerEl = document.createElement('div');
+  spacerEl.style.cssText = 'height:14mm;';
+  body.appendChild(spacerEl);
   const opt = {
     margin: 10,
     filename: filename,
@@ -1490,12 +1495,14 @@ function downloadPdf(title, bodyId, filename){
     html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
     jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
     // منع قطع صف الجدول بين صفحتين، وبدء كل جدول (عدا الأول) في صفحة جديدة
-    pagebreak: { mode: ['css','legacy'], avoid: ['tr', '.memo-row', '.quad-summary'], before: '.quad-break' }
+    pagebreak: { mode: ['css'], avoid: ['tr', '.memo-row', '.quad-summary'], before: '.quad-break' }
   };
   html2pdf().set(opt).from(body).save().then(()=>{
     body.removeChild(titleEl);
+    body.removeChild(spacerEl);
   }).catch((err)=>{
     body.removeChild(titleEl);
+    body.removeChild(spacerEl);
     alert('حدث خطأ أثناء إنشاء PDF: ' + err.message);
   });
 }
