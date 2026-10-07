@@ -363,9 +363,10 @@
      وعمود البيان ياخد الباقي ويلف النص بدل ما يدفع الأعمدة بره حدود الصندوق */
   .quad .table-scroll{max-height:none;overflow:visible;}
   .quad table{table-layout:fixed;width:100%;}
-  .quad table th:nth-child(1), .quad table td:nth-child(1){width:110px;}
-  .quad table th:nth-child(3), .quad table td:nth-child(3){width:130px;}
-  .quad table th:nth-child(2), .quad table td:nth-child(2){white-space:normal;word-break:break-word;}
+  .quad table th:nth-child(1), .quad table td:nth-child(1){width:105px;}
+  .quad table th:nth-child(2), .quad table td:nth-child(2){width:120px;white-space:normal;word-break:break-word;}
+  .quad table th:nth-child(4), .quad table td:nth-child(4){width:120px;}
+  .quad table th:nth-child(3), .quad table td:nth-child(3){white-space:normal;word-break:break-word;}
   .quad-head{
     padding:10px 14px;
     font-weight:700;
@@ -863,7 +864,7 @@ function checkOpeningBalance(){
 /* ================= EXCEL PARSING ================= */
 const HEADER_MAP = {
   date: ['التاريخ','تاريخ'],
-  ref: ['رقم المرجع','رقم مرجع'],
+  ref: ['رقم المرجع','رقم مرجع','المرجع','مرجع'],
   desc: ['بيان'],
   debit: ['مدين'],
   credit: ['دائن']
@@ -1404,9 +1405,9 @@ function renderApplyBody(){
 
   function quadTable(rows, empty){
     if(rows.length===0) return `<div class="empty-state">${empty}</div>`;
-    let html = `<div class="table-scroll"><table><thead><tr><th>التاريخ</th><th>بيان</th><th>المبلغ</th></tr></thead><tbody>`;
+    let html = `<div class="table-scroll"><table><thead><tr><th>التاريخ</th><th>رقم المرجع</th><th>بيان</th><th>المبلغ</th></tr></thead><tbody>`;
     rows.forEach(r=>{
-      html += `<tr><td>${formatDate(r.date)}</td><td>${r.desc||''}</td><td>${fmtMoney(r.amount)}</td></tr>`;
+      html += `<tr><td>${formatDate(r.date)}</td><td>${r.ref||''}</td><td>${r.desc||''}</td><td>${fmtMoney(r.amount)}</td></tr>`;
     });
     html += '</tbody></table></div>';
     return html;
@@ -1562,13 +1563,13 @@ function exportApplyExcel(){
   ];
   const wb = XLSX.utils.book_new();
   sheets.forEach(sec=>{
-    const aoa = [['التاريخ', 'بيان', 'المبلغ']];
-    sec.rows.forEach(r=> aoa.push([formatDate(r.date), r.desc||'', r.amount]));
+    const aoa = [['التاريخ', 'رقم المرجع', 'بيان', 'المبلغ']];
+    sec.rows.forEach(r=> aoa.push([formatDate(r.date), r.ref||'', r.desc||'', r.amount]));
     aoa.push([]);
     aoa.push(['عدد الحركات', sec.rows.length]);
     aoa.push(['إجمالي القيمة', quadTotal(sec.rows)]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{wch:14},{wch:55},{wch:16}];
+    ws['!cols'] = [{wch:14},{wch:18},{wch:50},{wch:16}];
     XLSX.utils.book_append_sheet(wb, ws, sec.name.slice(0,31));
   });
   const summaryWs = XLSX.utils.aoa_to_sheet([
