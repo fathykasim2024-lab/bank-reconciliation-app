@@ -7,6 +7,22 @@ const CLIENT_COOKIE = 'recon_session';
 const ADMIN_COOKIE = 'recon_admin';
 const CLIENT_MAX_AGE = 60 * 60 * 24 * 3;  // 3 أيام (بتخلي "مرات الدخول" مؤشر حقيقي على النشاط ومشاركة الكود)
 const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;   // 7 أيام
+const TRIAL_MS = 24 * 60 * 60 * 1000;     // مدة الفترة التجريبية: 24 ساعة
+
+// لو العميل في فترة تجريبية ومرّ عليها 24 ساعة: بنوقف الكود تلقائيًا ونشيل علامة التجربة
+// (بيتنفذ عند أي دخول/طلب من العميل، وعند فتح لوحة الأدمن)
+async function expireTrialIfNeeded(env, code, data) {
+  if (data && data.trial === true && data.active !== false && data.trialStart
+      && Date.now() - data.trialStart >= TRIAL_MS) {
+    data.active = false;
+    data.trial = false;
+    data.trialEndedAt = Date.now();
+    await env.CLIENTS.put(code, JSON.stringify(data), {
+      metadata: { name: data.name, active: false }
+    });
+  }
+  return data;
+}
 
 function jsonResponse(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -56,6 +72,7 @@ async function isClientStillActive(env, code) {
   } catch {
     return false;
   }
+  data = await expireTrialIfNeeded(env, code, data);
   return data.active !== false;
 }
 
@@ -97,6 +114,7 @@ export default {
         try {
           const raw = await env.CLIENTS.get(session.code);
           data = raw ? JSON.parse(raw) : null;
+          if (data) data = await expireTrialIfNeeded(env, session.code, data);
         } catch {
           data = null;
         }
@@ -173,7 +191,12 @@ async function handleClientLogin(request, env) {
     return jsonResponse({ error: 'خطأ في بيانات العميل' }, 500);
   }
 
+  data = await expireTrialIfNeeded(env, code, data);
+
   if (data.active === false) {
+    if (data.trialEndedAt) {
+      return jsonResponse({ error: 'انتهت الفترة التجريبية. للاشتراك برجاء التواصل واتس اب على الرقم 01090021382 ومن خارج مصر 00201090021382' }, 403);
+    }
     return jsonResponse({ error: 'الحساب موقوف حاليًا، تواصل مع الإدارة' }, 403);
   }
 
@@ -244,6 +267,7 @@ async function handleAdminApi(request, env, path, method) {
       try {
         const raw = await env.CLIENTS.get(k.name);
         data = raw ? JSON.parse(raw) : {};
+        if (raw) data = await expireTrialIfNeeded(env, k.name, data);
       } catch {
         data = {};
       }
@@ -266,6 +290,7 @@ async function handleAdminApi(request, env, path, method) {
         whatsapp: data.whatsapp || null,
         trial: data.trial === true,
         trialStart: data.trialStart || null,
+        trialEndedAt: data.trialEndedAt || null,
         distinctIPs3d,
         suspicious: distinctIPs3d >= SUSPICIOUS_IP_THRESHOLD
       };
@@ -309,6 +334,7 @@ async function handleAdminApi(request, env, path, method) {
 
     const data = JSON.parse(raw);
     data.active = !(data.active !== false);
+    if (data.active) delete data.trialEndedAt; // لو الأدمن فعّل الكود تاني (اشترك العميل) نشيل علامة انتهاء التجربة
     await env.CLIENTS.put(code, JSON.stringify(data), {
       metadata: { name: data.name, active: data.active }
     });

@@ -542,7 +542,7 @@ async function setTrial(trial) {
       return;
     }
     trialMsg.textContent = trial
-      ? 'تم تفعيل رسالة الفترة التجريبية للكود ' + code + ' — الرسالة تظهر عنده خلال دقائق، وتذكر توقف الكود بعد 24 ساعة'
+      ? 'تم تفعيل رسالة الفترة التجريبية للكود ' + code + ' — الرسالة تظهر عنده خلال دقائق، وسيتوقف الكود تلقائياً بعد 24 ساعة'
       : 'تم إلغاء الفترة التجريبية للكود ' + code;
     trialMsg.className = 'msg ok';
     loadClients();
@@ -556,12 +556,16 @@ document.getElementById('trialBtn').addEventListener('click', () => setTrial(tru
 document.getElementById('trialOffBtn').addEventListener('click', () => setTrial(false));
 
 function trialFlagHtml(c) {
-  if (!c.trial) return '';
+  if (!c.trial) {
+    if (c.trialEndedAt) {
+      return '<span class="trial-flag over" title="أُوقف تلقائياً: ' + escapeHtml(formatDate(c.trialEndedAt)) + '">انتهت التجربة وتم الإيقاف تلقائياً</span>';
+    }
+    return '';
+  }
   const hours = c.trialStart ? Math.floor((Date.now() - c.trialStart) / 3600000) : 0;
-  const over = hours >= 24;
+  const left = Math.max(0, 24 - hours);
   const started = c.trialStart ? formatDate(c.trialStart) : '';
-  const label = over ? 'تجريبي — مرّت ' + hours + ' ساعة، أوقفه' : 'تجريبي — منذ ' + hours + ' ساعة';
-  return '<span class="trial-flag' + (over ? ' over' : '') + '" title="بدأت التجربة: ' + escapeHtml(started) + '">' + label + '</span>';
+  return '<span class="trial-flag" title="بدأت التجربة: ' + escapeHtml(started) + '">تجريبي — باقي ' + left + ' ساعة تقريباً</span>';
 }
 
 function applyFilter() {
