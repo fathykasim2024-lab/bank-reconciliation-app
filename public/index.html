@@ -492,6 +492,21 @@
   .del-type:hover{background:#fdecea;}
   .type-hint{font-size:12.5px;color:var(--muted);}
   .an-wrap{overflow-x:auto;}
+  .cat-print{display:none;}
+  .pdf-mode .cat-select{display:none;}
+  .pdf-mode .cat-print{display:inline;}
+  .pdf-mode .an-wrap{overflow:visible;}
+  @media print{
+    #view-analysis{ page:dashpage; }
+    .analysis-layout{grid-template-columns:1fr !important;}
+    .cat-select{display:none !important;}
+    .cat-print{display:inline !important;}
+    .an-wrap{overflow:visible !important;}
+    #analysisBody *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .an-summary, .an-card{page-break-inside:avoid;break-inside:avoid;}
+    .an-table thead{display:table-header-group;}
+    .an-table{font-size:12px;}
+  }
   .an-table{width:100%;border-collapse:collapse;font-size:13.5px;}
   .an-table th{
     background:var(--navy);color:#fff;padding:9px 8px;text-align:right;
@@ -559,8 +574,24 @@
   .db-bar-val{direction:ltr;text-align:left;font-weight:700;white-space:nowrap;}
   .db-donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center;}
   .db-donut{width:200px;height:200px;flex:none;}
-  .db-seg{fill:none;stroke-width:28;stroke-dasharray:0 1000;transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1);}
-  .go .db-seg{stroke-dasharray:var(--len) 1000;}
+  .pdf-mode .db-toggle{display:none;}
+  @page dashpage{ size:A4 landscape; margin:10mm; }
+  @media print{
+    #view-dashboard{ page:dashpage; }
+    .db-toggle{display:none !important;}
+    #dashboardBody *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .db-kpis, .db-section, .db-card{page-break-inside:avoid;break-inside:avoid;}
+    .db-bar-fill{transition:none !important;width:var(--w) !important;}
+    /* في الطباعة: الرسمان جنبًا إلى جنب وعناصر أصغر شوية */
+    .db-grid{grid-template-columns:1fr 1fr !important;gap:12px;}
+    .db-card{padding:12px 14px;}
+    .db-bar-row{grid-template-columns:90px 1fr 100px !important;font-size:12px;gap:8px;margin-bottom:9px;}
+    .db-bar-row .db-bar-track{grid-column:auto !important;grid-row:auto !important;}
+    .db-bar-row .db-bar-val, .db-bar-row .db-bar-name{grid-row:auto !important;grid-column:auto !important;}
+    .db-donut{width:160px;height:160px;}
+    .db-donut-wrap{gap:10px;}
+    .db-kpi .val{font-size:20px;}
+  }
   .db-legend{list-style:none;margin:0;padding:0;flex:1;min-width:190px;}
   .db-legend li{display:grid;grid-template-columns:14px 1fr auto;gap:4px 8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
   .db-legend li:last-child{border-bottom:none;}
@@ -823,7 +854,13 @@
     <div class="analysis-layout">
       <section class="analysis-main">
         <div class="panel">
-          <div class="panel-head">تحليل الحركات — كشف الحساب الدفترى بعد التسوية</div>
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>تحليل الحركات — كشف الحساب الدفترى بعد التسوية</span>
+            <div style="display:flex;gap:8px;">
+              <button class="action" id="btnPrintAnalysis">🖨️ طباعة</button>
+              <button class="action gold" id="btnPdfAnalysis">⬇️ تنزيل PDF</button>
+            </div>
+          </div>
           <div class="panel-body" id="analysisBody"></div>
         </div>
       </section>
@@ -855,7 +892,13 @@
   <!-- ============ TAB 7: DASHBOARD ============ -->
   <div class="view" id="view-dashboard">
     <div class="panel">
-      <div class="panel-head">الداشبورد — تحليل المقبوضات والمدفوعات</div>
+      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>الداشبورد — تحليل المقبوضات والمدفوعات</span>
+        <div style="display:flex;gap:8px;">
+          <button class="action" id="btnPrintDash">🖨️ طباعة</button>
+          <button class="action gold" id="btnPdfDash">⬇️ تنزيل PDF</button>
+        </div>
+      </div>
       <div class="panel-body" id="dashboardBody"></div>
     </div>
   </div>
@@ -879,8 +922,35 @@ const state = {
 
 /* ================= LOCAL PERSISTENCE (localStorage) ================= */
 const STORAGE_KEY = 'bankReconciliationState_v1';
+/* أنواع المقبوضات والمدفوعات بتتحفظ في مفتاح منفصل: ما بتتمسحش مع «مسح البيانات والبدء من جديد»
+   ولا مع كل تسوية جديدة - بتتغير بس لما العميل يضيف نوع أو يحذفه بعلامة × */
+const TYPES_KEY = 'bankReconciliationTypes_v1';
+let typesLoadedFromStorage = false;
+
+function saveTypes(){
+  try{
+    localStorage.setItem(TYPES_KEY, JSON.stringify({
+      receiptTypes: state.analysisSettings.receiptTypes,
+      paymentTypes: state.analysisSettings.paymentTypes
+    }));
+  }catch(e){ console.warn('تعذر حفظ أنواع الحركات', e); }
+}
+
+function loadSavedTypes(){
+  try{
+    const raw = localStorage.getItem(TYPES_KEY);
+    if(!raw) return;
+    const t = JSON.parse(raw);
+    if(t && Array.isArray(t.receiptTypes) && Array.isArray(t.paymentTypes)){
+      state.analysisSettings.receiptTypes = t.receiptTypes;
+      state.analysisSettings.paymentTypes = t.paymentTypes;
+      typesLoadedFromStorage = true;
+    }
+  }catch(e){ /* تجاهل بيانات تالفة */ }
+}
 
 function saveState(){
+  if(typesLoadedFromStorage || state.analysisSettings.receiptTypes.length || state.analysisSettings.paymentTypes.length) saveTypes();
   try{
     const payload = {
       openingBooksDebit: document.getElementById('openingBooksDebit').value,
@@ -933,11 +1003,13 @@ function restoreState(){
   state.tables = data.tables;
   state.memoHeader = data.memoHeader || { accountName: '', fromDate: '', toDate: '' };
   if(data.analysisSettings && Array.isArray(data.analysisSettings.receiptTypes) && Array.isArray(data.analysisSettings.paymentTypes)){
-    state.analysisSettings = {
-      receiptTypes: data.analysisSettings.receiptTypes,
-      paymentTypes: data.analysisSettings.paymentTypes,
-      choices: data.analysisSettings.choices || {}
-    };
+    state.analysisSettings.choices = data.analysisSettings.choices || {};
+    if(!typesLoadedFromStorage){        // أول مرة بعد التحديث: ننقل الأنواع المحفوظة مع التسوية للمفتاح الثابت
+      state.analysisSettings.receiptTypes = data.analysisSettings.receiptTypes;
+      state.analysisSettings.paymentTypes = data.analysisSettings.paymentTypes;
+      typesLoadedFromStorage = true;
+      saveTypes();
+    }
     renderTypeLists();
   }
 
@@ -1687,12 +1759,18 @@ async function fetchAnalysis(){
   ['t1','t2','t3','t4'].forEach(k=>{
     selectedTables[k] = (state.tables[k] || []).filter(r => r.selected);
   });
+  // الأرصدة الافتتاحية بنقراها مباشرة من خانات الإدخال وقت الفتح (مش من قيمة قديمة محفوظة)
+  const num = id => parseFloat(document.getElementById(id).value) || 0;
+  const openingBooks = num('openingBooksDebit') - num('openingBooksCredit');
+  const openingBank = num('openingBankDebit') - num('openingBankCredit');
   const res = await fetch('/api/analysis', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
-      openingBooks: state.openingBooks,
+      openingBooks,
+      openingBank,
       booksEntries: state.booksEntries,
+      bankEntries: (state.bankEntries || []).map(e => ({debit: e.debit, credit: e.credit})),
       bankBalance: state.bankBalance,
       tables: selectedTables
     })
@@ -1742,7 +1820,10 @@ function renderAnalysis(){
   html += '<div class="an-wrap"><table class="an-table"><thead><tr>'
     + '<th>التاريخ</th><th>رقم المرجع</th><th>بيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th><th>نوع الحركة</th>'
     + '</tr></thead><tbody>';
-  html += '<tr class="open"><td colspan="5">رصيد أول المدة</td><td class="num">'+fmtMoney(d.openingBooks)+'</td><td></td></tr>';
+  html += '<tr class="open"><td colspan="3">رصيد أول المدة (الافتتاحي)</td>'
+    + '<td class="num">'+(d.openingBooks > 0 ? fmtMoney(d.openingBooks) : '')+'</td>'
+    + '<td class="num">'+(d.openingBooks < 0 ? fmtMoney(-d.openingBooks) : '')+'</td>'
+    + '<td class="num">'+fmtMoney(d.openingBooks)+'</td><td></td></tr>';
   d.rows.forEach(r=>{
     const chosen = r.side ? validChoice(r) : '';
     html += '<tr'+(r.added?' class="added"':'')+'>'
@@ -1754,16 +1835,18 @@ function renderAnalysis(){
       + '<td class="num">'+fmtMoney(r.balance)+'</td>'
       + '<td>'+(r.side
           ? '<select class="cat-select'+(chosen?' chosen':'')+'" data-key="'+escapeAttr(r.key)+'" data-side="'+r.side+'">'+typeOptionsHtml(r.side, chosen)+'</select>'
+            + '<span class="cat-print">'+escapeAttr((namedTypes(r.side).find(t => t.id === chosen) || {}).name || '')+'</span>'
           : '')+'</td>'
       + '</tr>';
   });
-  html += '<tr class="close"><td colspan="3">الرصيد الختامي بعد التسوية</td>'
+  html += '<tr class="close"><td colspan="3">الإجمالي والرصيد الختامي بعد التسوية (شامل الافتتاحي)</td>'
     + '<td class="num">'+fmtMoney(d.totalDebit)+'</td><td class="num">'+fmtMoney(d.totalCredit)+'</td>'
     + '<td class="num">'+fmtMoney(d.finalBalance)+'</td><td></td></tr>';
   html += '</tbody></table></div>';
 
   html += '<div class="an-summary">'
-    + '<div class="an-card"><div class="lbl">الرصيد الختامي للدفاتر بعد التسوية</div><div class="val">'+fmtMoney(d.finalBalance)+'</div></div>'
+    + '<div class="an-card"><div class="lbl">رصيد أول المدة (الافتتاحي)</div><div class="val">'+fmtMoney(d.openingBooks)+'</div></div>'
+    + '<div class="an-card"><div class="lbl">الرصيد الختامي للدفاتر بعد التسوية (شامل الافتتاحي)</div><div class="val">'+fmtMoney(d.finalBalance)+'</div></div>'
     + '<div class="an-card"><div class="lbl">رصيد كشف البنك</div><div class="val">'+fmtMoney(d.bankBalance)+'</div></div>'
     + '<div class="an-card '+(d.matched?'ok':'bad')+'"><div class="lbl">نتيجة المطابقة</div><div class="val">'+(d.matched?'رصيد مطابق':'رصيد غير مطابق')+'</div></div>'
     + '</div>';
@@ -1784,6 +1867,8 @@ document.getElementById('analysisBody').addEventListener('change', function(e){
     delete state.analysisSettings.choices[key];
     sel.classList.remove('chosen');
   }
+  const printSpan = sel.parentElement.querySelector('.cat-print');
+  if(printSpan) printSpan.textContent = sel.value ? sel.options[sel.selectedIndex].text : '';
   saveState();
   updateClassifiedCounter();
 });
@@ -1847,6 +1932,7 @@ document.getElementById('btnAddPayment').addEventListener('click', ()=> addType(
   });
 });
 
+loadSavedTypes();
 renderTypeLists();
 
 /* ================= TAB 7: DASHBOARD ================= */
@@ -1909,8 +1995,8 @@ function dbDonutHtml(list, base){
     const frac = base > 0 ? i.value / base : 0;
     const len = frac * C;
     const draw = Math.max(0, len - gap);
-    segs += '<circle class="db-seg" cx="100" cy="100" r="'+R+'" stroke="'+i.color+'" '
-      + 'style="--len:'+draw.toFixed(2)+'px;stroke-dashoffset:'+(-offset).toFixed(2)+'px"><title>'
+    segs += '<circle class="db-seg" cx="100" cy="100" r="'+R+'" fill="none" stroke="'+i.color+'" stroke-width="28" data-len="'+draw.toFixed(2)+'" '
+      + 'style="stroke-dasharray:0 1000;stroke-dashoffset:'+(-offset).toFixed(2)+'px;transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1)"><title>'
       + escapeAttr(i.name)+' — '+(frac*100).toFixed(1)+'%</title></circle>';
     offset += len;
   });
@@ -1918,8 +2004,8 @@ function dbDonutHtml(list, base){
   const svg = '<svg class="db-donut" viewBox="0 0 200 200" role="img">'
     + '<circle cx="100" cy="100" r="'+R+'" fill="none" stroke="#eef1f5" stroke-width="28"></circle>'
     + '<g transform="rotate(-90 100 100)">'+segs+'</g>'
-    + '<text x="100" y="94" text-anchor="middle" font-size="11" fill="#5c6b78">الإجمالي</text>'
-    + '<text x="100" y="116" text-anchor="middle" font-size="'+(totalTxt.length > 12 ? 12 : 15)+'" font-weight="900" fill="#14304d">'+totalTxt+'</text>'
+    + '<text x="100" y="94" text-anchor="middle" font-family="Tajawal,Arial,sans-serif" font-size="11" fill="#5c6b78">الإجمالي</text>'
+    + '<text x="100" y="116" text-anchor="middle" font-family="Tajawal,Arial,sans-serif" font-size="'+(totalTxt.length > 12 ? 12 : 15)+'" font-weight="900" fill="#14304d">'+totalTxt+'</text>'
     + '</svg>';
   const legend = '<ul class="db-legend">' + list.map(i=>{
     const pc = base > 0 ? i.value / base * 100 : 0;
@@ -1969,7 +2055,10 @@ function renderDashboard(){
   body.innerHTML = html;
 
   body.classList.remove('go');
-  requestAnimationFrame(()=> requestAnimationFrame(()=> body.classList.add('go')));
+  requestAnimationFrame(()=> requestAnimationFrame(()=>{
+    body.classList.add('go');
+    body.querySelectorAll('.db-seg').forEach(c=>{ c.style.strokeDasharray = c.dataset.len + ' 1000'; });
+  }));
 }
 
 document.getElementById('dashboardBody').addEventListener('change', function(e){
@@ -1993,13 +2082,15 @@ function printSection(){
   window.print();
 }
 
-function downloadPdf(title, bodyId, filename){
+function downloadPdf(title, bodyId, filename, opts){
+  const extra = opts || {};
   const body = document.getElementById(bodyId);
   if(!body || !body.innerHTML.trim()){
     alert('لا يوجد محتوى لتنزيله بعد — تأكد من إنشاء المذكرة/التطبيق أولاً.');
     return;
   }
   const titleEl = addTempTitle(bodyId, title);
+  if(extra.bodyClass) body.classList.add(extra.bodyClass);
   // فاصل غير مرئي آخر المحتوى: بيمنع قطع آخر سطر (زي إجمالي آخر جدول) عند حدود
   // الصفحة الأخيرة بالظبط - مشكلة معروفة لما يكون طول المحتوى قريب جدًا من حافة الصفحة
   const spacerEl = document.createElement('div');
@@ -2010,16 +2101,18 @@ function downloadPdf(title, bodyId, filename){
     filename: filename,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    jsPDF: { unit:'mm', format:'a4', orientation: extra.orientation || 'portrait' },
     // منع قطع صف الجدول بين صفحتين، وبدء كل جدول (عدا الأول) في صفحة جديدة
-    pagebreak: { mode: ['css'], avoid: ['tr', '.memo-row', '.quad-summary'], before: '.quad-break' }
+    pagebreak: extra.pagebreak || { mode: ['css'], avoid: ['tr', '.memo-row', '.quad-summary'], before: '.quad-break' }
   };
   html2pdf().set(opt).from(body).save().then(()=>{
     body.removeChild(titleEl);
     body.removeChild(spacerEl);
+    if(extra.bodyClass) body.classList.remove(extra.bodyClass);
   }).catch((err)=>{
     body.removeChild(titleEl);
     body.removeChild(spacerEl);
+    if(extra.bodyClass) body.classList.remove(extra.bodyClass);
     alert('حدث خطأ أثناء إنشاء PDF: ' + err.message);
   });
 }
@@ -2027,6 +2120,22 @@ function downloadPdf(title, bodyId, filename){
 document.getElementById('btnPrintMemo').addEventListener('click', printSection);
 document.getElementById('btnPdfMemo').addEventListener('click', ()=>{
   downloadPdf('مذكرة التسوية البنكية', 'memoBody', 'مذكرة-التسوية-البنكية.pdf');
+});
+document.getElementById('btnPrintAnalysis').addEventListener('click', printSection);
+document.getElementById('btnPdfAnalysis').addEventListener('click', ()=>{
+  downloadPdf('تحليل الحركات — كشف الحساب الدفترى بعد التسوية', 'analysisBody', 'تحليل-الحركات.pdf', {
+    bodyClass: 'pdf-mode',
+    orientation: 'landscape',
+    pagebreak: { mode: ['css'], avoid: ['tr', '.an-summary'] }
+  });
+});
+document.getElementById('btnPrintDash').addEventListener('click', printSection);
+document.getElementById('btnPdfDash').addEventListener('click', ()=>{
+  downloadPdf('الداشبورد — تحليل المقبوضات والمدفوعات', 'dashboardBody', 'داشبورد-تحليل-الحركات.pdf', {
+    bodyClass: 'pdf-mode',
+    orientation: 'landscape',
+    pagebreak: { mode: ['css'], avoid: ['.db-kpis', '.db-section'] }
+  });
 });
 document.getElementById('btnPrintApply').addEventListener('click', printSection);
 document.getElementById('btnPdfApply').addEventListener('click', ()=>{

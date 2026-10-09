@@ -40,7 +40,7 @@ export async function handleAnalysis(request) {
     return jsonResponse({ error: 'بيانات غير صالحة' }, 400);
   }
 
-  const { openingBooks = 0, booksEntries = [], tables = {}, bankBalance = 0 } = body;
+  const { openingBooks = 0, openingBank = null, booksEntries = [], bankEntries = null, tables = {}, bankBalance = 0 } = body;
   if (!Array.isArray(booksEntries)) {
     return jsonResponse({ error: 'صيغة الحركات غير صحيحة' }, 400);
   }
@@ -106,12 +106,25 @@ export async function handleAnalysis(request) {
     return { key, side, date: r.date, ref: r.ref, desc: r.desc, debit: r.debit, credit: r.credit, balance: bal, added: r.added };
   });
 
+  // رصيد البنك: لو اتبعتت حركات البنك والرصيد الافتتاحي نحسبه بنفسنا (عشان مانعتمدش على قيمة قديمة محفوظة)
+  let bankBal = Number(bankBalance) || 0;
+  if (Array.isArray(bankEntries) && openingBank !== null) {
+    bankBal = Number(openingBank) || 0;
+    bankEntries.forEach(e => { bankBal += (Number(e.debit) || 0) - (Number(e.credit) || 0); });
+  }
+
+  // الرصيد الافتتاحي بيتحسب كسطر مدين (لو موجب) أو دائن (لو سالب) جوه الإجماليات
+  const opening = Number(openingBooks) || 0;
+  const openingDebit = opening > 0 ? opening : 0;
+  const openingCredit = opening < 0 ? -opening : 0;
+  totalDebit += openingDebit;
+  totalCredit += openingCredit;
+
   const finalBalance = bal;
-  const bankBal = Number(bankBalance) || 0;
   const difference = bankBal + finalBalance;
 
   return jsonResponse({
-    openingBooks: Number(openingBooks) || 0,
+    openingBooks: opening,
     rows,
     finalBalance,
     totalDebit, totalCredit,
