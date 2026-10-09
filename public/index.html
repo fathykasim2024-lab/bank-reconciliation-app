@@ -454,7 +454,7 @@
     margin-bottom:10px;
   }
   @media print{
-    header, nav.tabs, #btnToApply, #btnProceed, #trialBanner{display:none !important;}
+    header, nav.tabs, #btnToApply, #btnProceed, #trialBanner, .analysis-aside{display:none !important;}
     .view:not(.active){display:none !important;}
     .panel-head button{display:none !important;}
     main{padding:0;max-width:none;}
@@ -464,6 +464,64 @@
     /* كل جدول في تطبيق التسوية (عدا الأول) يبدأ في صفحة جديدة بدل ما ياخد جزء من الصفحة السابقة */
     .quad-break{page-break-before:always;break-before:page;}
   }
+  /* ===== صفحة تحليل الحركات ===== */
+  .analysis-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;}
+  @media (max-width:900px){ .analysis-layout{grid-template-columns:1fr;} }
+  .type-group{margin-bottom:18px;}
+  .type-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .type-label{
+    flex:1;background:var(--navy);color:#fff;padding:9px 12px;
+    border-radius:var(--radius);font-weight:700;font-size:14px;
+  }
+  .plus-btn{
+    width:38px;height:38px;border:none;border-radius:var(--radius);
+    background:var(--gold);color:#fff;font-size:24px;line-height:1;
+    font-weight:700;cursor:pointer;
+  }
+  .plus-btn:hover{background:var(--gold-deep);}
+  .type-row{display:flex;gap:6px;margin-bottom:8px;}
+  .type-row input{
+    flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line);
+    border-radius:var(--radius);font-family:inherit;font-size:14px;
+  }
+  .type-row input:focus{outline:none;border-color:var(--navy);}
+  .del-type{
+    width:34px;border:1px solid var(--line);background:#fff;color:var(--danger);
+    border-radius:var(--radius);cursor:pointer;font-size:16px;
+  }
+  .del-type:hover{background:#fdecea;}
+  .type-hint{font-size:12.5px;color:var(--muted);}
+  .an-wrap{overflow-x:auto;}
+  .an-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  .an-table th{
+    background:var(--navy);color:#fff;padding:9px 8px;text-align:right;
+    white-space:nowrap;font-weight:700;
+  }
+  .an-table td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .an-table td.num{text-align:left;direction:ltr;white-space:nowrap;}
+  .an-table tr.added td{background:#eaf5ea;}
+  .an-table tr.open td, .an-table tr.close td{background:#f3efe2;font-weight:700;}
+  .an-tag{
+    display:inline-block;margin-inline-start:6px;padding:1px 7px;border-radius:999px;
+    background:#cfe8cf;color:#25602a;font-size:11px;font-weight:700;
+  }
+  .cat-select{
+    width:100%;min-width:150px;padding:6px 8px;border:1px solid var(--line);
+    border-radius:var(--radius);font-family:inherit;font-size:13px;background:#fff;
+  }
+  .cat-select.chosen{border-color:#25602a;background:#f3faf3;}
+  .an-summary{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;}
+  .an-card{
+    flex:1;min-width:180px;border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;background:#fff;
+  }
+  .an-card .lbl{font-size:12.5px;color:var(--muted);margin-bottom:4px;}
+  .an-card .val{font-size:18px;font-weight:900;direction:ltr;text-align:right;}
+  .an-card.ok{border-color:#25602a;background:#f3faf3;}
+  .an-card.bad{border-color:var(--danger);background:#fdecea;}
+  .an-note{margin:0 0 12px;font-size:13.5px;color:var(--muted);}
+  .an-warn{margin:0 0 12px;padding:10px 12px;background:#fdecea;color:var(--danger);border-radius:var(--radius);font-size:13.5px;}
+
   /* رسالة الفترة التجريبية (بتظهر بس للعميل اللي الأدمن فعّل له التجربة) */
   #trialBanner{
     display:none;
@@ -505,6 +563,7 @@
   <button class="tab-btn" data-tab="search" disabled>3. البحث</button>
   <button class="tab-btn" data-tab="memo" disabled>4. مذكرة التسوية</button>
   <button class="tab-btn" data-tab="apply" disabled>5. تطبيق التسوية</button>
+  <button class="tab-btn" data-tab="analysis" disabled>6. تحليل الحركات</button>
 </nav>
 
 <main>
@@ -712,6 +771,40 @@
     </div>
   </div>
 
+  <!-- ============ TAB 6: ANALYSIS ============ -->
+  <div class="view" id="view-analysis">
+    <div class="analysis-layout">
+      <section class="analysis-main">
+        <div class="panel">
+          <div class="panel-head">تحليل الحركات — كشف الحساب الدفترى بعد التسوية</div>
+          <div class="panel-body" id="analysisBody"></div>
+        </div>
+      </section>
+      <aside class="analysis-aside">
+        <div class="panel">
+          <div class="panel-head">أنواع الحركات</div>
+          <div class="panel-body">
+            <div class="type-group">
+              <div class="type-head">
+                <div class="type-label">بيان المقبوضات</div>
+                <button type="button" class="plus-btn" id="btnAddReceipt" title="إضافة بيان مقبوضات">+</button>
+              </div>
+              <div id="receiptTypes"></div>
+            </div>
+            <div class="type-group">
+              <div class="type-head">
+                <div class="type-label">بيان المدفوعات</div>
+                <button type="button" class="plus-btn" id="btnAddPayment" title="إضافة بيان مدفوعات">+</button>
+              </div>
+              <div id="paymentTypes"></div>
+            </div>
+            <div class="type-hint">اضغط + لإضافة نوع جديد، ثم اختر النوع من القائمة بجانب كل حركة في الكشف.</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -724,7 +817,9 @@ const state = {
   booksBalance: 0,
   bankBalance: 0,
   tables: { t1: [], t2: [], t3: [], t4: [] }, // each item: {date, ref, desc, amount, selected:bool}
-  memoHeader: { accountName: '', fromDate: '', toDate: '' }
+  memoHeader: { accountName: '', fromDate: '', toDate: '' },
+  analysisSettings: { receiptTypes: [], paymentTypes: [], choices: {} }, // choices: {مفتاح الحركة: رقم النوع}
+  analysisData: null
 };
 
 /* ================= LOCAL PERSISTENCE (localStorage) ================= */
@@ -743,6 +838,7 @@ function saveState(){
       bankBalance: state.bankBalance,
       tables: state.tables,
       memoHeader: state.memoHeader,
+      analysisSettings: state.analysisSettings,
       savedAt: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -781,6 +877,14 @@ function restoreState(){
   state.bankBalance = data.bankBalance;
   state.tables = data.tables;
   state.memoHeader = data.memoHeader || { accountName: '', fromDate: '', toDate: '' };
+  if(data.analysisSettings && Array.isArray(data.analysisSettings.receiptTypes) && Array.isArray(data.analysisSettings.paymentTypes)){
+    state.analysisSettings = {
+      receiptTypes: data.analysisSettings.receiptTypes,
+      paymentTypes: data.analysisSettings.paymentTypes,
+      choices: data.analysisSettings.choices || {}
+    };
+    renderTypeLists();
+  }
 
   const savedDate = data.savedAt ? new Date(data.savedAt).toLocaleString('ar-EG') : '';
   document.getElementById('statusBooks').textContent = 'تم استرجاع '+state.booksEntries.length+' حركة محفوظة ✓';
@@ -803,6 +907,7 @@ function restoreState(){
   enableTab('diff');
   enableTab('review');
   enableTab('search');
+  enableTab('analysis');
 
   if(savedDate){
     const banner = document.getElementById('restoreBanner');
@@ -857,6 +962,15 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
         await fetchReview();
       }catch(err){
         alert('حدث خطأ أثناء حساب المراجعة: '+err.message);
+        return;
+      }
+    }
+    if(btn.dataset.tab === 'analysis'){
+      try{
+        await fetchAnalysis();
+        renderAnalysis();
+      }catch(err){
+        alert('حدث خطأ أثناء إعداد تحليل الحركات: '+err.message);
         return;
       }
     }
@@ -1408,6 +1522,7 @@ function renderMemoBody(){
     saveState();
   });
   enableTab('memo');
+  enableTab('analysis');
 }
 
 document.getElementById('btnToApply').addEventListener('click', async ()=>{
@@ -1487,6 +1602,186 @@ function renderApplyBody(){
   `;
   enableTab('apply');
 }
+
+/* ================= TAB 6: ANALYSIS ================= */
+function newTypeId(){
+  return 'T' + Date.now().toString(36) + Math.floor(Math.random()*46656).toString(36);
+}
+
+function typeListFor(side){
+  return side === 'receipt' ? state.analysisSettings.receiptTypes : state.analysisSettings.paymentTypes;
+}
+
+function namedTypes(side){
+  return typeListFor(side).filter(t => t.name && t.name.trim());
+}
+
+async function fetchAnalysis(){
+  const selectedTables = {};
+  ['t1','t2','t3','t4'].forEach(k=>{
+    selectedTables[k] = (state.tables[k] || []).filter(r => r.selected);
+  });
+  const res = await fetch('/api/analysis', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      openingBooks: state.openingBooks,
+      booksEntries: state.booksEntries,
+      bankBalance: state.bankBalance,
+      tables: selectedTables
+    })
+  });
+  if(!res.ok) throw new Error('فشل الاتصال بالخادم');
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  state.analysisData = data;
+}
+
+function typeOptionsHtml(side, chosenId){
+  let html = '<option value="">— اختر النوع —</option>';
+  namedTypes(side).forEach(t=>{
+    html += '<option value="'+escapeAttr(t.id)+'"'+(t.id===chosenId?' selected':'')+'>'+escapeAttr(t.name)+'</option>';
+  });
+  return html;
+}
+
+function validChoice(row){
+  const id = state.analysisSettings.choices[row.key];
+  return id && namedTypes(row.side).some(t => t.id === id) ? id : '';
+}
+
+function updateClassifiedCounter(){
+  const d = state.analysisData;
+  const el = document.getElementById('classifiedCounter');
+  if(!d || !el) return;
+  const movable = d.rows.filter(r => r.side);
+  const done = movable.filter(r => validChoice(r)).length;
+  el.textContent = 'تم تصنيف ' + done + ' من ' + movable.length + ' حركة';
+}
+
+function renderAnalysis(){
+  const d = state.analysisData;
+  const body = document.getElementById('analysisBody');
+  if(!d){ body.innerHTML = ''; return; }
+  if(d.rows.length === 0){
+    body.innerHTML = '<div class="empty-state">لا توجد حركات في كشف الحساب الدفترى</div>';
+    return;
+  }
+
+  let html = '';
+  if(d.unmatchedRemovals > 0){
+    html += '<div class="an-warn">تعذر مطابقة '+d.unmatchedRemovals+' قيد محذوف مع كشف الدفاتر، وقد يكون الرصيد الختامي غير دقيق. أعد رفع الملفات وحاول مرة أخرى.</div>';
+  }
+  html += '<p class="an-note">حُذف '+d.removedCount+' قيد غير موجود بالبنك، وأُضيف '+d.addedCount+' قيد موجود بالبنك وغير موجود بالدفاتر (ملوّن بالأخضر). <b id="classifiedCounter"></b></p>';
+  html += '<div class="an-wrap"><table class="an-table"><thead><tr>'
+    + '<th>التاريخ</th><th>رقم المرجع</th><th>بيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th><th>نوع الحركة</th>'
+    + '</tr></thead><tbody>';
+  html += '<tr class="open"><td colspan="5">رصيد أول المدة</td><td class="num">'+fmtMoney(d.openingBooks)+'</td><td></td></tr>';
+  d.rows.forEach(r=>{
+    const chosen = r.side ? validChoice(r) : '';
+    html += '<tr'+(r.added?' class="added"':'')+'>'
+      + '<td>'+escapeAttr(formatDate(r.date))+'</td>'
+      + '<td>'+escapeAttr(r.ref||'')+'</td>'
+      + '<td>'+escapeAttr(r.desc||'')+(r.added?'<span class="an-tag">مُضافة</span>':'')+'</td>'
+      + '<td class="num">'+(r.debit?fmtMoney(r.debit):'')+'</td>'
+      + '<td class="num">'+(r.credit?fmtMoney(r.credit):'')+'</td>'
+      + '<td class="num">'+fmtMoney(r.balance)+'</td>'
+      + '<td>'+(r.side
+          ? '<select class="cat-select'+(chosen?' chosen':'')+'" data-key="'+escapeAttr(r.key)+'" data-side="'+r.side+'">'+typeOptionsHtml(r.side, chosen)+'</select>'
+          : '')+'</td>'
+      + '</tr>';
+  });
+  html += '<tr class="close"><td colspan="3">الرصيد الختامي بعد التسوية</td>'
+    + '<td class="num">'+fmtMoney(d.totalDebit)+'</td><td class="num">'+fmtMoney(d.totalCredit)+'</td>'
+    + '<td class="num">'+fmtMoney(d.finalBalance)+'</td><td></td></tr>';
+  html += '</tbody></table></div>';
+
+  html += '<div class="an-summary">'
+    + '<div class="an-card"><div class="lbl">الرصيد الختامي للدفاتر بعد التسوية</div><div class="val">'+fmtMoney(d.finalBalance)+'</div></div>'
+    + '<div class="an-card"><div class="lbl">رصيد كشف البنك</div><div class="val">'+fmtMoney(d.bankBalance)+'</div></div>'
+    + '<div class="an-card '+(d.matched?'ok':'bad')+'"><div class="lbl">نتيجة المطابقة</div><div class="val">'+(d.matched?'رصيد مطابق':'رصيد غير مطابق')+'</div></div>'
+    + '</div>';
+
+  body.innerHTML = html;
+  updateClassifiedCounter();
+}
+
+/* اختيار نوع الحركة من القائمة المنسدلة بجانب كل حركة */
+document.getElementById('analysisBody').addEventListener('change', function(e){
+  const sel = e.target.closest('.cat-select');
+  if(!sel) return;
+  const key = sel.dataset.key;
+  if(sel.value){
+    state.analysisSettings.choices[key] = sel.value;
+    sel.classList.add('chosen');
+  }else{
+    delete state.analysisSettings.choices[key];
+    sel.classList.remove('chosen');
+  }
+  saveState();
+  updateClassifiedCounter();
+});
+
+/* لوحة أنواع المقبوضات والمدفوعات (الجانب الأيسر) */
+function renderTypeGroup(side, containerId){
+  const box = document.getElementById(containerId);
+  box.innerHTML = typeListFor(side).map(t =>
+    '<div class="type-row" data-id="'+escapeAttr(t.id)+'" data-side="'+side+'">'
+    + '<input type="text" value="'+escapeAttr(t.name)+'" placeholder="اكتب البيان">'
+    + '<button type="button" class="del-type" title="حذف">×</button>'
+    + '</div>').join('');
+}
+
+function renderTypeLists(){
+  renderTypeGroup('receipt', 'receiptTypes');
+  renderTypeGroup('payment', 'paymentTypes');
+}
+
+function addType(side, containerId){
+  const list = typeListFor(side);
+  const last = list[list.length-1];
+  if(!(last && !last.name.trim())){          // لو آخر مربع فاضي نكتفي بالتركيز عليه بدل ما نضيف مربع فاضي تاني
+    list.push({id: newTypeId(), name: ''});
+    renderTypeGroup(side, containerId);
+    saveState();
+  }
+  const inputs = document.getElementById(containerId).querySelectorAll('input');
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+
+document.getElementById('btnAddReceipt').addEventListener('click', ()=> addType('receipt', 'receiptTypes'));
+document.getElementById('btnAddPayment').addEventListener('click', ()=> addType('payment', 'paymentTypes'));
+
+['receiptTypes','paymentTypes'].forEach(containerId=>{
+  const box = document.getElementById(containerId);
+  box.addEventListener('input', function(e){
+    const row = e.target.closest('.type-row');
+    if(!row) return;
+    const t = typeListFor(row.dataset.side).find(x => x.id === row.dataset.id);
+    if(t){ t.name = e.target.value; saveState(); }
+  });
+  box.addEventListener('change', function(){ renderAnalysis(); });   // نحدّث القوائم المنسدلة بعد انتهاء الكتابة
+  box.addEventListener('click', function(e){
+    const btn = e.target.closest('.del-type');
+    if(!btn) return;
+    const row = btn.closest('.type-row');
+    const side = row.dataset.side, id = row.dataset.id;
+    const list = typeListFor(side);
+    const idx = list.findIndex(x => x.id === id);
+    if(idx < 0) return;
+    const used = Object.values(state.analysisSettings.choices).filter(v => v === id).length;
+    if(used > 0 && !confirm('هذا النوع مختار في '+used+' حركة، وسيُزال منها. هل تريد حذفه؟')) return;
+    list.splice(idx, 1);
+    Object.keys(state.analysisSettings.choices).forEach(k=>{
+      if(state.analysisSettings.choices[k] === id) delete state.analysisSettings.choices[k];
+    });
+    renderTypeGroup(side, containerId);
+    saveState();
+    renderAnalysis();
+  });
+});
+
+renderTypeLists();
 
 /* ================= PRINT & PDF ================= */
 function addTempTitle(bodyId, title){

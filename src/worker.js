@@ -1,6 +1,7 @@
 import { handleRecalc } from './logic/recalc.js';
 import { handleReview } from './logic/review.js';
 import { handleMemo } from './logic/memo.js';
+import { handleAnalysis } from './logic/analysis.js';
 import { createSessionCookie, verifySession } from './auth/session.js';
 
 const CLIENT_COOKIE = 'recon_session';
@@ -130,7 +131,7 @@ export default {
     }
 
     // ---------- واجهة المطابقة (محمية بجلسة عميل) ----------
-    if (path === '/api/recalc' || path === '/api/review' || path === '/api/memo') {
+    if (path === '/api/recalc' || path === '/api/review' || path === '/api/memo' || path === '/api/analysis') {
       const session = await verifySession(getCookie(request, CLIENT_COOKIE), env.SESSION_SECRET);
       if (!session || !(await isClientStillActive(env, session.code))) {
         return jsonResponse(
@@ -144,6 +145,7 @@ export default {
       }
       if (path === '/api/recalc') return handleRecalc(request);
       if (path === '/api/review') return handleReview(request);
+      if (path === '/api/analysis') return handleAnalysis(request);
       return handleMemo(request);
     }
 
