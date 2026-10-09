@@ -454,7 +454,7 @@
     margin-bottom:10px;
   }
   @media print{
-    header, nav.tabs, #btnToApply, #btnProceed{display:none !important;}
+    header, nav.tabs, #btnToApply, #btnProceed, #trialBanner{display:none !important;}
     .view:not(.active){display:none !important;}
     .panel-head button{display:none !important;}
     main{padding:0;max-width:none;}
@@ -464,9 +464,34 @@
     /* كل جدول في تطبيق التسوية (عدا الأول) يبدأ في صفحة جديدة بدل ما ياخد جزء من الصفحة السابقة */
     .quad-break{page-break-before:always;break-before:page;}
   }
+  /* رسالة الفترة التجريبية (بتظهر بس للعميل اللي الأدمن فعّل له التجربة) */
+  #trialBanner{
+    display:none;
+    background:#fff4d6;
+    color:#5c4310;
+    border-bottom:3px solid var(--gold);
+    padding:11px 16px;
+    text-align:center;
+    font-size:14.5px;
+    font-weight:700;
+    line-height:1.9;
+  }
+  #trialBanner a{
+    color:var(--navy);
+    font-weight:900;
+    text-decoration:underline;
+    white-space:nowrap;
+  }
 </style>
 </head>
 <body>
+
+<div id="trialBanner" role="alert">
+  ⏳ سيتم الانتهاء من الفترة التجريبية خلال 24 ساعة. للاشتراك برجاء التواصل واتس اب على الرقم
+  <a href="https://wa.me/201090021382" target="_blank" rel="noopener" dir="ltr">01090021382</a>
+  ومن خارج مصر
+  <a href="https://wa.me/201090021382" target="_blank" rel="noopener" dir="ltr">00201090021382</a>
+</div>
 
 <header>
   <h1>مطابقة اون لاين - اتعلم مع Fathy Kasim</h1>
@@ -1588,6 +1613,22 @@ document.getElementById('btnExcelApply').addEventListener('click', exportApplyEx
 
 /* استرجاع أي بيانات محفوظة من جلسة سابقة عند فتح الصفحة */
 restoreState();
+
+/* رسالة الفترة التجريبية: بنسأل الخادم لو العميل ده الأدمن فعّل له التجربة.
+   بنفحص عند فتح الصفحة، وكل 5 دقايق، وعند الرجوع للتبويب - عشان الرسالة تظهر حتى لو الأدمن فعّلها والعميل شغال */
+async function checkTrialStatus(){
+  try{
+    const res = await fetch('/api/client-status', {cache:'no-store'});
+    if(!res.ok) return;
+    const data = await res.json();
+    document.getElementById('trialBanner').style.display = data.trial ? 'block' : 'none';
+  }catch(e){ /* تجاهل أخطاء الاتصال المؤقتة */ }
+}
+checkTrialStatus();
+setInterval(checkTrialStatus, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible') checkTrialStatus();
+});
 </script>
 
 </body>

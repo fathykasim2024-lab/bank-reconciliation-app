@@ -261,6 +261,42 @@
     cursor:help;
     white-space:nowrap;
   }
+  select{
+    width:100%;
+    padding:11px 13px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-size:14.5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  select:focus{outline:none;border-color:var(--navy);}
+  button.secondary{
+    padding:11px 20px;
+    background:#fff;
+    color:var(--navy);
+    border:1px solid var(--navy);
+    border-radius:var(--radius);
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+  }
+  button.secondary:hover{background:#eef1f5;}
+  .trial-flag{
+    display:inline-block;
+    margin-inline-start:6px;
+    padding:2px 8px;
+    border-radius:999px;
+    background:#fff4d6;
+    color:var(--gold-deep);
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+    cursor:help;
+  }
+  .trial-flag.over{background:#fdecea;color:var(--danger);}
   .expiry-input.expired{border-color:var(--danger);color:var(--danger);}
   .expiry-input.soon{border-color:var(--gold);color:var(--gold-deep);}
   .expiry-save-note{
@@ -317,6 +353,21 @@
       </div>
 
       <div class="panel">
+        <div class="panel-head">رسالة الفترة التجريبية</div>
+        <div class="panel-body">
+          <div class="add-form">
+            <div class="field">
+              <label for="trialSelect">اختر كود العميل</label>
+              <select id="trialSelect"></select>
+            </div>
+            <button type="button" class="primary" id="trialBtn">تجريبي</button>
+            <button type="button" class="secondary" id="trialOffBtn">إلغاء التجريبي</button>
+          </div>
+          <div class="msg" id="trialMsg"></div>
+        </div>
+      </div>
+
+      <div class="panel">
         <div class="panel-head">
           العملاء <span class="count" id="clientCount"></span>
         </div>
@@ -342,6 +393,8 @@ const addMsg = document.getElementById('addMsg');
 const tableWrap = document.getElementById('tableWrap');
 const clientCount = document.getElementById('clientCount');
 const filterInput = document.getElementById('filterInput');
+const trialSelect = document.getElementById('trialSelect');
+const trialMsg = document.getElementById('trialMsg');
 
 let allClients = [];
 
@@ -449,10 +502,66 @@ async function loadClients() {
     if (!res.ok) { showGate(); return; }
     const data = await res.json();
     allClients = data.clients || [];
+    populateTrialSelect();
     applyFilter();
   } catch {
     tableWrap.innerHTML = '<div class="empty">تعذر تحميل قائمة العملاء</div>';
   }
+}
+
+function populateTrialSelect() {
+  const prev = trialSelect.value;
+  let html = '<option value="">— اختر الكود —</option>';
+  for (const c of allClients) {
+    html += '<option value="' + escapeHtml(c.code) + '">' + escapeHtml(c.code) + ' — ' + escapeHtml(c.name || '') + (c.trial ? ' (تجريبي)' : '') + '</option>';
+  }
+  trialSelect.innerHTML = html;
+  if (prev && allClients.some(c => c.code === prev)) trialSelect.value = prev;
+}
+
+async function setTrial(trial) {
+  const code = trialSelect.value;
+  trialMsg.textContent = '';
+  trialMsg.className = 'msg';
+  if (!code) {
+    trialMsg.textContent = 'اختر كود العميل أولاً';
+    trialMsg.className = 'msg error';
+    return;
+  }
+  try {
+    const res = await fetch('/api/admin/clients/trial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ code, trial })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      trialMsg.textContent = data.error || 'تعذر التنفيذ، حاول تاني';
+      trialMsg.className = 'msg error';
+      return;
+    }
+    trialMsg.textContent = trial
+      ? 'تم تفعيل رسالة الفترة التجريبية للكود ' + code + ' — الرسالة تظهر عنده خلال دقائق، وتذكر توقف الكود بعد 24 ساعة'
+      : 'تم إلغاء الفترة التجريبية للكود ' + code;
+    trialMsg.className = 'msg ok';
+    loadClients();
+  } catch {
+    trialMsg.textContent = 'حصل خطأ في الاتصال، حاول تاني';
+    trialMsg.className = 'msg error';
+  }
+}
+
+document.getElementById('trialBtn').addEventListener('click', () => setTrial(true));
+document.getElementById('trialOffBtn').addEventListener('click', () => setTrial(false));
+
+function trialFlagHtml(c) {
+  if (!c.trial) return '';
+  const hours = c.trialStart ? Math.floor((Date.now() - c.trialStart) / 3600000) : 0;
+  const over = hours >= 24;
+  const started = c.trialStart ? formatDate(c.trialStart) : '';
+  const label = over ? 'تجريبي — مرّت ' + hours + ' ساعة، أوقفه' : 'تجريبي — منذ ' + hours + ' ساعة';
+  return '<span class="trial-flag' + (over ? ' over' : '') + '" title="بدأت التجربة: ' + escapeHtml(started) + '">' + label + '</span>';
 }
 
 function applyFilter() {
@@ -477,7 +586,7 @@ function renderClients(clients) {
   for (const c of clients) {
     html += '<tr>'
       + '<td>' + escapeHtml(c.name) + '</td>'
-      + '<td>' + escapeHtml(c.code) + (c.suspicious ? '<span class="suspicious-flag" title="دخل من ' + c.distinctIPs3d + ' أجهزة/أماكن مختلفة خلال آخر 3 أيام - احتمال مشاركة الكود">⚠️ ' + c.distinctIPs3d + ' أماكن</span>' : '') + '</td>'
+      + '<td>' + escapeHtml(c.code) + trialFlagHtml(c) + (c.suspicious ? '<span class="suspicious-flag" title="دخل من ' + c.distinctIPs3d + ' أجهزة/أماكن مختلفة خلال آخر 3 أيام - احتمال مشاركة الكود">⚠️ ' + c.distinctIPs3d + ' أماكن</span>' : '') + '</td>'
       + '<td><span class="badge ' + (c.active ? 'active' : 'inactive') + '">' + (c.active ? 'مفعّل' : 'موقوف') + '</span></td>'
       + '<td>' + formatDate(c.firstLogin) + '</td>'
       + '<td>' + (c.loginCount || 0) + '</td>'

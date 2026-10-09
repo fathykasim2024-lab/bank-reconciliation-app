@@ -88,6 +88,29 @@ export default {
       return handleAdminApi(request, env, path, method);
     }
 
+    // ---------- حالة العميل: هل هو في فترة تجريبية؟ (التطبيق بيسأل عنها عشان يظهر رسالة التجربة) ----------
+    if (path === '/api/client-status') {
+      if (method !== 'GET') return jsonResponse({ error: 'طريقة غير مسموحة' }, 405);
+      const session = await verifySession(getCookie(request, CLIENT_COOKIE), env.SESSION_SECRET);
+      let data = null;
+      if (session && session.code) {
+        try {
+          const raw = await env.CLIENTS.get(session.code);
+          data = raw ? JSON.parse(raw) : null;
+        } catch {
+          data = null;
+        }
+      }
+      if (!data || data.active === false) {
+        return jsonResponse(
+          { error: 'جلستك منتهية أو حسابك موقوف، سجل دخول تاني' },
+          401,
+          { 'Set-Cookie': clearCookieHeader(CLIENT_COOKIE) }
+        );
+      }
+      return jsonResponse({ ok: true, trial: data.trial === true });
+    }
+
     // ---------- واجهة المطابقة (محمية بجلسة عميل) ----------
     if (path === '/api/recalc' || path === '/api/review' || path === '/api/memo') {
       const session = await verifySession(getCookie(request, CLIENT_COOKIE), env.SESSION_SECRET);
@@ -241,6 +264,8 @@ async function handleAdminApi(request, env, path, method) {
         login30d,
         expiryDate: data.expiryDate || null,
         whatsapp: data.whatsapp || null,
+        trial: data.trial === true,
+        trialStart: data.trialStart || null,
         distinctIPs3d,
         suspicious: distinctIPs3d >= SUSPICIOUS_IP_THRESHOLD
       };
@@ -331,6 +356,29 @@ async function handleAdminApi(request, env, path, method) {
       metadata: { name: data.name, active: data.active }
     });
     return jsonResponse({ ok: true, whatsapp: data.whatsapp });
+  }
+
+  if (path === '/api/admin/clients/trial' && method === 'POST') {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ error: 'بيانات غير صالحة' }, 400);
+    }
+    const code = String(body.code || '').trim();
+    const trial = body.trial === true;
+    if (!code) return jsonResponse({ error: 'اختر كود العميل' }, 400);
+    const raw = await env.CLIENTS.get(code);
+    if (!raw) return jsonResponse({ error: 'العميل غير موجود' }, 404);
+
+    const data = JSON.parse(raw);
+    // لو العميل أصلاً في تجربة نحتفظ بوقت البداية الأصلي (عشان عدّاد الـ24 ساعة ما يتصفّرش بالغلط)
+    data.trialStart = trial ? (data.trial ? (data.trialStart || Date.now()) : Date.now()) : null;
+    data.trial = trial;
+    await env.CLIENTS.put(code, JSON.stringify(data), {
+      metadata: { name: data.name, active: data.active }
+    });
+    return jsonResponse({ ok: true, trial: data.trial, trialStart: data.trialStart });
   }
 
   if (path === '/api/admin/clients/delete' && method === 'POST') {
