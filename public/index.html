@@ -522,6 +522,52 @@
   .an-note{margin:0 0 12px;font-size:13.5px;color:var(--muted);}
   .an-warn{margin:0 0 12px;padding:10px 12px;background:#fdecea;color:var(--danger);border-radius:var(--radius);font-size:13.5px;}
 
+  /* ===== صفحة الداشبورد ===== */
+  .db-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+  .db-note{font-size:13px;color:var(--muted);}
+  .db-toggle{font-size:13.5px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .db-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:24px;}
+  .db-kpi{position:relative;overflow:hidden;border-radius:12px;padding:16px 18px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.12);}
+  .db-kpi .ic{position:absolute;left:12px;top:6px;font-size:38px;opacity:.22;}
+  .db-kpi .lbl{font-size:13px;opacity:.92;margin-bottom:6px;}
+  .db-kpi .val{font-size:24px;font-weight:900;direction:ltr;text-align:right;}
+  .db-kpi .sub{font-size:12px;opacity:.85;margin-top:4px;}
+  .db-kpi.rec{background:linear-gradient(135deg,#17705f,#2fb59f);}
+  .db-kpi.pay{background:linear-gradient(135deg,#b8442d,#ec8a47);}
+  .db-kpi.net{background:linear-gradient(135deg,#0d2036,#2b5d8f);}
+  .db-kpi.cnt{background:linear-gradient(135deg,#7c5c1c,#d1a23c);}
+  .db-section{margin-bottom:26px;}
+  .db-sec-title{font-size:17px;font-weight:900;margin:0 0 12px;padding-right:12px;border-right:5px solid;}
+  .db-sec-title.rec{color:#17705f;border-color:#2fb59f;}
+  .db-sec-title.pay{color:#b8442d;border-color:#ec8a47;}
+  .db-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:980px){ .db-grid{grid-template-columns:1fr;} }
+  .db-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.05);}
+  .db-card h4{margin:0 0 14px;font-size:14.5px;color:var(--navy);font-weight:900;}
+  .db-empty{padding:30px 10px;text-align:center;color:var(--muted);font-size:13.5px;}
+  .db-bar-row{display:grid;grid-template-columns:120px 1fr 118px;align-items:center;gap:10px;margin-bottom:11px;font-size:13px;}
+  @media (max-width:560px){
+    .db-bar-row{grid-template-columns:1fr auto;row-gap:5px;}
+    .db-bar-track{grid-column:1 / 3;grid-row:2;}
+    .db-bar-val{grid-row:1;grid-column:2;}
+    .db-bar-name{grid-row:1;grid-column:1;}
+  }
+  .db-bar-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;color:var(--ink);}
+  .db-bar-track{height:20px;background:#eef1f5;border-radius:999px;overflow:hidden;}
+  .db-bar-fill{height:100%;width:0;border-radius:999px;transition:width .9s cubic-bezier(.2,.8,.2,1);}
+  .go .db-bar-fill{width:var(--w);}
+  .db-bar-val{direction:ltr;text-align:left;font-weight:700;white-space:nowrap;}
+  .db-donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center;}
+  .db-donut{width:200px;height:200px;flex:none;}
+  .db-seg{fill:none;stroke-width:28;stroke-dasharray:0 1000;transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1);}
+  .go .db-seg{stroke-dasharray:var(--len) 1000;}
+  .db-legend{list-style:none;margin:0;padding:0;flex:1;min-width:190px;}
+  .db-legend li{display:grid;grid-template-columns:14px 1fr auto;gap:4px 8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
+  .db-legend li:last-child{border-bottom:none;}
+  .db-dot{width:12px;height:12px;border-radius:3px;display:inline-block;}
+  .db-leg-pc{font-weight:900;direction:ltr;text-align:left;}
+  .db-leg-vl{grid-column:2 / 4;font-size:12px;color:var(--muted);direction:ltr;text-align:right;}
+
   /* رسالة الفترة التجريبية (بتظهر بس للعميل اللي الأدمن فعّل له التجربة) */
   #trialBanner{
     display:none;
@@ -564,6 +610,7 @@
   <button class="tab-btn" data-tab="memo" disabled>4. مذكرة التسوية</button>
   <button class="tab-btn" data-tab="apply" disabled>5. تطبيق التسوية</button>
   <button class="tab-btn" data-tab="analysis" disabled>6. تحليل الحركات</button>
+  <button class="tab-btn" data-tab="dashboard" disabled>7. الداشبورد</button>
 </nav>
 
 <main>
@@ -805,6 +852,14 @@
     </div>
   </div>
 
+  <!-- ============ TAB 7: DASHBOARD ============ -->
+  <div class="view" id="view-dashboard">
+    <div class="panel">
+      <div class="panel-head">الداشبورد — تحليل المقبوضات والمدفوعات</div>
+      <div class="panel-body" id="dashboardBody"></div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -908,6 +963,7 @@ function restoreState(){
   enableTab('review');
   enableTab('search');
   enableTab('analysis');
+  enableTab('dashboard');
 
   if(savedDate){
     const banner = document.getElementById('restoreBanner');
@@ -971,6 +1027,15 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
         renderAnalysis();
       }catch(err){
         alert('حدث خطأ أثناء إعداد تحليل الحركات: '+err.message);
+        return;
+      }
+    }
+    if(btn.dataset.tab === 'dashboard'){
+      try{
+        await fetchAnalysis();
+        renderDashboard();
+      }catch(err){
+        alert('حدث خطأ أثناء إعداد الداشبورد: '+err.message);
         return;
       }
     }
@@ -1523,6 +1588,7 @@ function renderMemoBody(){
   });
   enableTab('memo');
   enableTab('analysis');
+  enableTab('dashboard');
 }
 
 document.getElementById('btnToApply').addEventListener('click', async ()=>{
@@ -1782,6 +1848,136 @@ document.getElementById('btnAddPayment').addEventListener('click', ()=> addType(
 });
 
 renderTypeLists();
+
+/* ================= TAB 7: DASHBOARD ================= */
+const DB_COLORS = {
+  receipt: ['#17a589','#2e86c1','#27ae60','#5dade2','#16a085','#48c9b0','#2874a6','#7dcea0','#1abc9c','#85c1e9'],
+  payment: ['#e74c3c','#e67e22','#d4ac0d','#c0392b','#af7ac5','#ec7063','#f0b27a','#a569bd','#cb4335','#f5b041'],
+  none: '#aab4be'
+};
+let dbShowUnclassified = true;
+
+/* تجميع مبالغ نوع واحد (مقبوضات أو مدفوعات) حسب النوع المختار لكل حركة */
+function dbAggregate(side){
+  const d = state.analysisData;
+  const totals = {};
+  let unclassified = 0, unclassifiedCount = 0, classifiedCount = 0, movements = 0;
+  d.rows.forEach(r=>{
+    if(r.side !== side) return;
+    const amount = side === 'receipt' ? r.debit : r.credit;
+    movements++;
+    const id = validChoice(r);
+    if(id){ totals[id] = (totals[id] || 0) + amount; classifiedCount++; }
+    else { unclassified += amount; unclassifiedCount++; }
+  });
+  const palette = DB_COLORS[side];
+  const items = namedTypes(side)
+    .filter(t => totals[t.id])
+    .map(t => ({name: t.name.trim(), value: totals[t.id]}))
+    .sort((a,b) => b.value - a.value)
+    .map((it,i) => ({...it, color: palette[i % palette.length]}));
+  const classifiedSum = items.reduce((s,i)=>s+i.value, 0);
+  return {items, classifiedSum, unclassified, unclassifiedCount, classifiedCount, movements, total: classifiedSum + unclassified};
+}
+
+function dbDisplayItems(agg){
+  const list = agg.items.slice();
+  if(dbShowUnclassified && agg.unclassified > 0){
+    list.push({name:'غير مصنف', value: agg.unclassified, color: DB_COLORS.none});
+  }
+  return list;
+}
+
+function dbBarsHtml(list, base){
+  const max = Math.max.apply(null, list.map(i=>i.value));
+  return list.map(i=>{
+    const w = max > 0 ? (i.value / max * 100) : 0;
+    const pc = base > 0 ? (i.value / base * 100) : 0;
+    return '<div class="db-bar-row" title="'+escapeAttr(i.name)+' — '+pc.toFixed(1)+'%">'
+      + '<div class="db-bar-name">'+escapeAttr(i.name)+'</div>'
+      + '<div class="db-bar-track"><div class="db-bar-fill" style="--w:'+w.toFixed(2)+'%;background:'+i.color+'"></div></div>'
+      + '<div class="db-bar-val">'+fmtMoney(i.value)+'</div>'
+      + '</div>';
+  }).join('');
+}
+
+function dbDonutHtml(list, base){
+  const R = 70, C = 2 * Math.PI * R;
+  const gap = list.length > 1 ? 1.6 : 0;
+  let offset = 0, segs = '';
+  list.forEach(i=>{
+    const frac = base > 0 ? i.value / base : 0;
+    const len = frac * C;
+    const draw = Math.max(0, len - gap);
+    segs += '<circle class="db-seg" cx="100" cy="100" r="'+R+'" stroke="'+i.color+'" '
+      + 'style="--len:'+draw.toFixed(2)+'px;stroke-dashoffset:'+(-offset).toFixed(2)+'px"><title>'
+      + escapeAttr(i.name)+' — '+(frac*100).toFixed(1)+'%</title></circle>';
+    offset += len;
+  });
+  const totalTxt = fmtMoney(base);
+  const svg = '<svg class="db-donut" viewBox="0 0 200 200" role="img">'
+    + '<circle cx="100" cy="100" r="'+R+'" fill="none" stroke="#eef1f5" stroke-width="28"></circle>'
+    + '<g transform="rotate(-90 100 100)">'+segs+'</g>'
+    + '<text x="100" y="94" text-anchor="middle" font-size="11" fill="#5c6b78">الإجمالي</text>'
+    + '<text x="100" y="116" text-anchor="middle" font-size="'+(totalTxt.length > 12 ? 12 : 15)+'" font-weight="900" fill="#14304d">'+totalTxt+'</text>'
+    + '</svg>';
+  const legend = '<ul class="db-legend">' + list.map(i=>{
+    const pc = base > 0 ? i.value / base * 100 : 0;
+    return '<li><span class="db-dot" style="background:'+i.color+'"></span><span>'+escapeAttr(i.name)+'</span>'
+      + '<span class="db-leg-pc">'+pc.toFixed(1)+'%</span><span class="db-leg-vl">'+fmtMoney(i.value)+'</span></li>';
+  }).join('') + '</ul>';
+  return '<div class="db-donut-wrap">'+svg+legend+'</div>';
+}
+
+function dbSectionHtml(side, agg){
+  const isRec = side === 'receipt';
+  const title = isRec ? 'المقبوضات' : 'المدفوعات';
+  let html = '<div class="db-section"><h3 class="db-sec-title '+(isRec?'rec':'pay')+'">'+title+'</h3>';
+  if(agg.movements === 0){
+    return html + '<div class="db-card"><div class="db-empty">لا توجد '+title+' في كشف الحساب</div></div></div>';
+  }
+  if(agg.classifiedCount === 0){
+    return html + '<div class="db-card"><div class="db-empty">لم يتم تصنيف أي حركة من '+title+' بعد.<br>اكتب الأنواع من الجانب الأيسر في تبويب «تحليل الحركات» ثم اخترها بجانب كل حركة.</div></div></div>';
+  }
+  const list = dbDisplayItems(agg);
+  const base = list.reduce((s,i)=>s+i.value, 0);
+  html += '<div class="db-grid">'
+    + '<div class="db-card"><h4>'+title+' بالقيمة حسب النوع</h4>'+dbBarsHtml(list, base)+'</div>'
+    + '<div class="db-card"><h4>النسبة المئوية من إجمالي '+title+'</h4>'+dbDonutHtml(list, base)+'</div>'
+    + '</div></div>';
+  return html;
+}
+
+function renderDashboard(){
+  const d = state.analysisData;
+  const body = document.getElementById('dashboardBody');
+  if(!d){ body.innerHTML = ''; return; }
+  const rec = dbAggregate('receipt');
+  const pay = dbAggregate('payment');
+  const classified = rec.classifiedCount + pay.classifiedCount;
+  const movements = rec.movements + pay.movements;
+
+  let html = '<div class="db-top"><div class="db-note">الأرقام مأخوذة من كشف الحساب الدفترى بعد التسوية، وحسب الأنواع التي اخترتها في تبويب «تحليل الحركات».</div>'
+    + '<label class="db-toggle"><input type="checkbox" id="dbShowUnclassified"'+(dbShowUnclassified?' checked':'')+'> إظهار الحركات غير المصنفة</label></div>';
+  html += '<div class="db-kpis">'
+    + '<div class="db-kpi rec"><span class="ic">📥</span><div class="lbl">إجمالي المقبوضات</div><div class="val">'+fmtMoney(rec.total)+'</div><div class="sub">'+rec.movements+' حركة</div></div>'
+    + '<div class="db-kpi pay"><span class="ic">📤</span><div class="lbl">إجمالي المدفوعات</div><div class="val">'+fmtMoney(pay.total)+'</div><div class="sub">'+pay.movements+' حركة</div></div>'
+    + '<div class="db-kpi net"><span class="ic">⚖️</span><div class="lbl">صافي الحركة (مقبوضات − مدفوعات)</div><div class="val">'+fmtMoney(rec.total - pay.total)+'</div><div class="sub">الرصيد الختامي بعد التسوية: '+fmtMoney(d.finalBalance)+'</div></div>'
+    + '<div class="db-kpi cnt"><span class="ic">✅</span><div class="lbl">الحركات المصنفة</div><div class="val">'+classified+' / '+movements+'</div><div class="sub">'+(movements?Math.round(classified/movements*100):0)+'% من الحركات</div></div>'
+    + '</div>';
+  html += dbSectionHtml('receipt', rec) + dbSectionHtml('payment', pay);
+  body.innerHTML = html;
+
+  body.classList.remove('go');
+  requestAnimationFrame(()=> requestAnimationFrame(()=> body.classList.add('go')));
+}
+
+document.getElementById('dashboardBody').addEventListener('change', function(e){
+  if(e.target && e.target.id === 'dbShowUnclassified'){
+    dbShowUnclassified = e.target.checked;
+    renderDashboard();
+  }
+});
 
 /* ================= PRINT & PDF ================= */
 function addTempTitle(bodyId, title){
